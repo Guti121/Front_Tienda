@@ -4,6 +4,7 @@ import {
   getRequest,
   patchRequest,
   postRequest,
+  postRequestFormData,
 } from "../axios/generalAxiosRequest";
 
 //request price suggested
@@ -13,10 +14,8 @@ export const handleSuggestedRetailPrice = async (price, token) => {
 
   try {
     const request = await postRequest(url, data, token);
-    console.log("estoy en suggested");
     return request;
   } catch (error) {
-    console.log("error desde handle", error);
     throw error;
   }
 };
@@ -24,30 +23,29 @@ export const handleSuggestedRetailPrice = async (price, token) => {
 //----------------------------------- TIPO PRODUCTO----------------------------------------
 
 //list typeProduct not filter
-export const handleTypeProduct = async (token, page = 1) => {
-  let url = `${baseUrl}listType/?page=${page}`;
-  console.log(token, "this is mi token");
+export const handleTypeProduct = async (token, urlPage = null) => {
+  let url = urlPage?? `${baseUrl}listType/`;
   try {
     const request = await getRequest(url, token);
-    console.log("respuesta de getType", request);
+    console.log(request,'request')
     return request;
   } catch (error) {
-    console.log(error);
     throw new Error(error);
   }
 };
 
+
 //list typeProduct filter
-export const handleTypeProductFilter = async (value = "", token, page = 1) => {
-  let url = `${baseUrl}typeProductFilter/?page=${page}`;
-  // Agregar 'q' si se proporciona un valor
+export const handleTypeProductFilter = async ({ url = null, token, value = "" }) => {
+  let finaleUrl = url ?? `${baseUrl}typeProductFilter/`;
   if (value) {
-    url += `&q=${encodeURIComponent(value)}`;
+    finaleUrl += finaleUrl.includes('?') 
+      ? `&q=${encodeURIComponent(value)}` 
+      : `?q=${encodeURIComponent(value)}`;
   }
+
   try {
-    console.log("eeste es el token ", token);
-    const request = await getRequest(url, token);
-    console.log("respuesta de getType", request.data);
+    const request = await getRequest(finaleUrl, token);
     return request.data;
   } catch (error) {
     throw error;
@@ -59,13 +57,21 @@ export async function handleCreateTypeProduct({ token, nameTypeProduct }) {
   let data = {
     tipo_producto: nameTypeProduct,
   };
-  console.log(url, data, token);
   try {
     const request = await postRequest(url, data, token);
-    console.log(request);
     return request;
   } catch (error) {
-    console.log("error:", error);
+    throw error;
+  }
+}
+
+export async function handleDeleteTypeProduct(token,id){
+  let url=`${baseUrl}destroytypeProduct/${id}/`
+  try{
+    const request = await deleteRequest(url,token)
+    console.log(request)
+  }catch(error){
+    console.log(error)
   }
 }
 //-----------------------------------PRODUCTO----------------------------------------
@@ -74,20 +80,30 @@ export const handleRetrieveProduct = async (id = 0, token) => {
   let url = `${baseUrl}productDetail/${id}/`;
   try {
     const request = await getRequest(url, token);
-    console.log(request);
     return request;
   } catch (error) {
     throw error;
   }
 };
-// create product
-export const handleCreateProduct = async (token, date) => {
-  let url = `${baseUrl}create/`;
-  let data = date;
+
+//barCodeProduct
+export const handleBarCode = async (id,token )=>{
+  let url=`${baseUrl}facturas/api/barcode/${id}/`
   try {
-    const request = await postRequest(url, data, token);
+    const request = await getRequest(url, token);
+    return request.data;
+  } catch (error) {
+    throw error;
+  }
+}
+// create product
+export const handleCreateProduct = async (token, formData) => {
+  let url = `${baseUrl}create/`;
+  try {
+    const request = await postRequestFormData(url, formData, token);
     return request;
   } catch (error) {
+    console.log(error)
     throw error;
   }
 };
@@ -108,11 +124,11 @@ export const handleListProduct = async (token) => {
 export async function handleListProductFilterAdmin(
   value = "",
   token,
-  page = 1,
+  page = null,
   filter = ""
 ) {
   // Construir la URL con parámetros condicionales
-  let url = `${baseUrl}product/?page=${page}`;
+  let url = page || `${baseUrl}product/?page=1`;
 
   // Agregar 'q' si se proporciona un valor
   if (value) {
@@ -121,11 +137,12 @@ export async function handleListProductFilterAdmin(
 
   // Agregar 'orden' si se proporciona un valor
   if (filter) {
-    url += `&filter=${encodeURIComponent(filter)}`;
+    url += `&order=${encodeURIComponent(filter)}`;
   }
 
   try {
     let request = await getRequest(url, token);
+    console.log(request.data)
     return request.data;
   } catch (error) {
     throw error;

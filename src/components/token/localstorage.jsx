@@ -14,7 +14,6 @@ const keyUser = "user";
 
 //Guardamos lo datos que nos pasa el login en el localstorage y tambien guardamos los datos en redux
 export async function save({ access, refresh, username, user }) {
-  console.log("celilar", username);
 
   try {
     // Decode the access token to get the expiration time
@@ -28,14 +27,7 @@ export async function save({ access, refresh, username, user }) {
         localStorage.setItem(keyUser, JSON.stringify(user)),
         localStorage.setItem(keyTokenExpiration, expirationTime.toString()), // Save expiration time
       ]);
-      console.log(
-        "se ingresaron los datos",
-        localStorage.getItem(keyAccessToken),
-        localStorage.getItem(keyRefreshToken),
-        localStorage.getItem(keyUsername),
-        localStorage.getItem(keyUser),
-        localStorage.getItem(keyTokenExpiration),
-      );
+      
     } else {
       await Promise.all([
         SecureStore.setItemAsync(keyAccessToken, access),
@@ -44,17 +36,10 @@ export async function save({ access, refresh, username, user }) {
         SecureStore.setItemAsync(keyUser, JSON.stringify(user)),
         SecureStore.setItemAsync(keyTokenExpiration, expirationTime.toString()), // Save expiration time
       ]);
-      console.log(
-        "se ingresaron los datos",
-        await SecureStore.getItemAsync(keyAccessToken),
-        await SecureStore.getItemAsync(keyRefreshToken),
-        await SecureStore.getItemAsync(keyUsername),
-        await SecureStore.getItemAsync(keyUser),
-        await SecureStore.getItemAsync(keyTokenExpiration),
-      );
+      
     }
   } catch (error) {
-    console.log(error, "desde funcion save Token ");
+    console.log("save Token ");
   }
 }
 
@@ -62,7 +47,6 @@ export async function save({ access, refresh, username, user }) {
 export const Storage = {
   // Guardar un dato
   setItem: async (key, value) => {
-    console.log("intente iniciar");
     if (isWeb) {
       localStorage.setItem(key, value);
     } else {

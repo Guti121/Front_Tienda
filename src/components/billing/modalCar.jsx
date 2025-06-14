@@ -48,7 +48,6 @@ export default function ModalCar() {
     try {
       const products = await Storage.getItem("arrayCar");
       const parsedProducts = products ? JSON.parse(products) : [];
-      console.log(products);
       setProductList(parsedProducts);
       countsValuesTotal(parsedProducts); // Calcular el total al cargar productos
     } catch (error) {
@@ -59,12 +58,7 @@ export default function ModalCar() {
   useEffect(() => {
     findArraysProducts();
   }, []);
-  console.log(
-    errorInvoice,
-    errorProductoNombre,
-    errorProductoId,
-    errorQuantity,
-  );
+  
   //Funcion para obtener la cuenta de los producto añadidos en el carrito , sin importar si son del mismo tipo , se cuenta como unidad
   const countsValuesTotal = (products) => {
     const totalAmount = products
@@ -83,7 +77,6 @@ export default function ModalCar() {
   //y se crea una nueva lista sin la unidad del producto selecionado
   //posterior a esto se llama la funcion que formatea el local storage
   const deleteProductCar = (index) => {
-    console.log("entro deleteProductCar");
     setProductList((prevData) => {
       const newData = [...prevData];
       newData.splice(index, 1);
@@ -148,30 +141,23 @@ export default function ModalCar() {
   //Funcion para hacer el delecte del producto en el localStorage
   const deleteProductStorage = async (updatedProductsList) => {
     //añadimos una verificacion adicional en caso de que exista un producto sin stock suficiente
-    console.log(updatedProductsList, "producto delete list ");
     if (errorInvoice) {
-      console.log("entre en delete error", errorProductoId);
       const item = updatedProductsList.filter(
         (item) => item.producto == errorProductoId,
       );
-      console.log(item);
 
       itemQuantity = item
         .map((item) => item.cantidad)
         .reduce((acc, cantidad) => acc + cantidad, 0);
-      console.log(itemQuantity);
       if (itemQuantity <= errorQuantity) {
         setErrorInvoice(false);
       }
-      console.log("el item tiene", { itemQuantity }, " y en stock hay ", {
-        errorQuantity,
-      });
+      
     }
     try {
       await Storage.removeItem("arrayCar");
       await Storage.setItem("arrayCar", JSON.stringify(updatedProductsList));
     } catch (error) {
-      console.error("Error al guardar en almacenamiento:", error);
     }
   };
 
@@ -181,7 +167,6 @@ export default function ModalCar() {
     try {
       const token = await expiredGetToken();
       if (!token) {
-        console.log("redirect");
         await deleteTokenStorage();
         router.replace("/login");
         return;
@@ -194,7 +179,6 @@ export default function ModalCar() {
         );
       }
     } catch (error) {
-      console.log(error.error || error, "error desde catch modal car");
       setErrorInvoice(error.error || error);
 
       //En caso de que el error JSON no contenga los siguientes, van a permanecer en falso
@@ -203,13 +187,12 @@ export default function ModalCar() {
         setErrorQuantity(error.stock);
         setErrorProductoId(error.producto_id);
       }
-      console.log(errorInvoice);
     }
   };
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <View style={{ flex: 1, overflow: "visible" }}>
+      <View style={{ flex: 1, overflow: "visible" ,...theme.backgroundColorPrincipal,}}>
         <View style={styles.generalContainer}>
           {notification && (
             <BarNotification
@@ -224,9 +207,9 @@ export default function ModalCar() {
             renderItem={({ item, index }) => (
               <View style={styles.containerFlatlist}>
                 <View style={styles.containerDetailsProducts}>
-                  <Text style={styles.textProductsStyle}>{item.nombrePro}</Text>
+                  <Text numberOfLines={2} style={{...theme.textTitle,textAlign:'center'}}>{item.nombrePro}</Text>
 
-                  <Text style={styles.textProductsStyle}>{item.cantidad}</Text>
+                  <Text style={styles.textProductsStyle}>{item.cantidad}/Unidades</Text>
 
                   <Text style={styles.textProductsStyle}>
                     {pesosFormat(item.valorPro)}
@@ -284,7 +267,7 @@ export default function ModalCar() {
           ) : (
             <View
               style={{
-                flexDirection: "row",
+                flexDirection:width < 700 ? 'column':'row',
                 alignItems: "center",
                 padding: 5,
               }}
@@ -294,24 +277,23 @@ export default function ModalCar() {
                 style={styles.pressableIcons}
                 onPress={() => cleanAllProducts()}
               >
-                {iconBroom}
+                {iconBroom()}<Text style={{color:'red',marginHorizontal:5}}>Limpiar</Text>
               </Pressable>
               <View style={{ alignItems: "center", flex: 1, padding: 5 }}>
-                <Text style={{ ...theme.textTitle }}>Totales</Text>
-                <Text style={{ ...theme.textNormal, fontSize: 18 }}>
-                  # Productos
+                <Text style={{ fontWeight: "bold", fontSize: 15 }}>
+                  #Productos Totales
                 </Text>
                 <Text
                   style={{
                     ...theme.textNormal,
-                    fontSize: 18,
+                    fontSize: 15,
                     color: "rgb(60, 196, 60)",
                   }}
                 >
                   {numProducts}
                 </Text>
 
-                <Text style={{ ...theme.textNormal, fontSize: 18 }}>
+                <Text style={{ fontWeight: "bold", fontSize: 15 }}>
                   Valor a Pagar
                 </Text>
                 <Text
@@ -331,7 +313,7 @@ export default function ModalCar() {
                   setModalConfirm(true);
                 }}
               >
-                {iconInvoice()}
+                {iconInvoice()} <Text style={{color:'white',marginHorizontal:5}}>Facturar</Text>
               </Pressable>
             </View>
           )}
@@ -352,16 +334,11 @@ const { width, height } = Dimensions.get("window");
 const styles = StyleSheet.create({
   generalContainer: {
     flex: 1,
-    borderWidth: 3,
-    margin: 10,
     alignItems: "center",
     justifyItems: "center",
-    borderRadius: 10,
-    borderColor: "#d0d0d0",
   },
   containerFlatlist: {
     ...theme.shadow,
-    borderRadius: 10,
     ...theme.backgroundColorPrincipal,
     alignContent: "center",
     margin: 10,
@@ -382,24 +359,22 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   containerPressables: {
-    margin: 7,
-    borderWidth: 3,
-    borderRadius: 10,
+    width:'100%',
+    ...theme.shadow,
+    borderColor: "#d0d0d0",
     borderColor: "#d0d0d0",
   },
   containerError: {
     backgroundColor: "rgb(255, 228, 228)",
-    margin: 7,
-    borderWidth: 3,
-    borderRadius: 10,
+    width:'100%',
+    borderStartWidth:1,
     borderColor: "#d0d0d0",
-    padding: 10,
   },
   textProductsStyle: {
     flex: 1,
-    ...theme.textTitle,
-    padding: 10,
-    margin: 5,
+    ...theme.textNames,
+    padding:5,
+    
     textAlign: "center", // Centrado vertical en el contenedor, si flex es 1 y ocupa todo el espacio
   },
   pressableIconDelete: {
@@ -415,8 +390,8 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   pressableIcons: {
-    width: 80,
-    height: 80,
+    flexDirection:'row',
+    height: 40,
     alignItems: "center",
     justifyContent: "center",
     ...theme.pressable,

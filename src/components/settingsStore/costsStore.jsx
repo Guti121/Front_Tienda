@@ -47,11 +47,9 @@ export function CostsStore(){
             setMargenGanancia(request.data?.margen_ganancia || "");
             setPromedioProductosVendidos(request.data?.promedio_productos_vendidos || "");
 
-            console.log(request)
            
             setEditable(false)
           } catch (error) {
-            console.log(error,'error');
             if (error?.message ==='No se encontró ninguna configuracion disponible.'){
               setCostosFijos('')
               setMargenGanancia('')
@@ -82,7 +80,6 @@ export function CostsStore(){
             margen_ganancia: margenGanancia,
             promedio_productos_vendidos: promedioProductosVendidos
           };
-          console.log("Enviando datos: ", formData);
 
           await handleCreateCostsStore(token, formData);
           setError("Se modificaron los campos");
@@ -90,7 +87,6 @@ export function CostsStore(){
           errorBar()
           handleRequest()
         } catch (error) {
-          console.log(error.message);
           setError("Error al guardar los datos");
           setColor("red");
           errorBar()
@@ -120,12 +116,9 @@ export function CostsStore(){
             }
             let request =await handleDeleteCostsStore(token)
             setError(request.data.message)
-            console.log(request.data.message,'message')
             errorBar()
             handleRequest()
-            console.log(request)
           }catch(error){
-              console.log(error.message)
               setError(error.message)
               setColor('red')
               errorBar()
@@ -161,6 +154,7 @@ export function CostsStore(){
               Teniendo en cuenta el promedio de productos vendidos en un mes, el porcentaje de ganancia que deseas 
               para los productos y los costos fijos, el sistema podrá hacer cálculos a la hora de ingresar un producto.
             </Text>
+            <Text style={{color:'red',fontWeight:'bold'}}>ADVERTENCIA: No asignes valores al azar</Text> 
           </View>
 
           <View style={{ alignItems: "center" }}>

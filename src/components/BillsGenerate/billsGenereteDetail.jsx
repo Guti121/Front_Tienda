@@ -18,6 +18,7 @@ import { Route } from "expo-router/build/Route";
 import { router } from "expo-router";
 import { ModalConfirm } from "../icons/modalConfirm";
 import * as Print from 'expo-print';
+import { isWeb } from "../token/localstorage";
 
 
 export function BillGenerateDetail({ id }) {
@@ -43,14 +44,12 @@ export function BillGenerateDetail({ id }) {
       }
           
 
-    console.log(token);
     try {
       const request = await handleFilterBillsRequest({
         token,
         selectedData: false,
         number: id,
       });
-      console.log(request.data);
       if (request.data) {
         // Formateamos las horas para meterla en un hook
         const fechaObjeto = new Date(request.data.fecha);
@@ -63,9 +62,7 @@ export function BillGenerateDetail({ id }) {
       }
     } catch (error) {
       setError(String(error));
-      console.log(error);
     }
-    console.log(response);
   };
 
   const FlatlistData = () => {
@@ -117,7 +114,6 @@ export function BillGenerateDetail({ id }) {
 
     try{
       const request= handleDeleteBill(token,id)
-      console.log(request.data)
       router.back()
     }catch(error)
     {
@@ -172,6 +168,22 @@ export function BillGenerateDetail({ id }) {
     const html = generateHTML();
     await Print.printAsync({ html });
   };
+  
+  const handlePrintWeb = () => {
+    const html = generateHTML(); // tu función que devuelve el HTML como string
+    const printWindow = window.open('', '_blank');
+    
+    if (printWindow) {
+      printWindow.document.open();
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+    } else {
+      alert('No se pudo abrir la ventana de impresión');
+    }
+  };
+
 
 
   // const handleExportToPDF = async () => {
@@ -222,7 +234,7 @@ export function BillGenerateDetail({ id }) {
                 paddingHorizontal: 20,
                 borderRadius: 8
               }}
-              onPress={handlePrint}
+              onPress={()=>{isWeb? handlePrintWeb() : handlePrint()}}
             >
               <Text style={{ color: 'white', fontWeight: 'bold' }}>Imprimir o compartir</Text>
             </Pressable>

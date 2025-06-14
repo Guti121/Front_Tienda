@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import { useSelector } from "react-redux";
-import BadRequest from "../app/badRequest";
+import BadRequest from "../../app/badRequest";
 
 export function useUserCAuthRedirect() {
   const router = useRouter();
@@ -17,10 +17,8 @@ export function useUserCAuthRedirect() {
     if (!isMounted) return; // Si el componente no ha montado, no hagas nada
 
     if (!user) {
-      console.log("🔴 No hay usuario, redirigiendo a login...");
       router.replace("/login");
     } else if (!["creator"].includes(user?.typeUser)) {
-      console.log("⚠️ Usuario no autorizado, redirigiendo a badRequest...");
       router.replace("/badRequest");
     }
   }, [user, router, isMounted]);
@@ -40,10 +38,8 @@ export function useUserCAAuthRedirect() {
     if (!isMounted) return; // Si el componente no ha montado, no hagas nada
 
     if (!user) {
-      console.log("🔴 No hay usuario, redirigiendo a login...");
       router.replace("/login");
     } else if (!["creator", "admin"].includes(user?.typeUser)) {
-      console.log("⚠️ Usuario no autorizado, redirigiendo a badRequest...");
       router.replace("/badRequest");
     }
   }, [user, router, isMounted]);
@@ -64,10 +60,8 @@ export function useUserCAWAuthRedirect() {
     if (!isMounted) return; // Si el componente no ha montado, no hagas nada
 
     if (!user) {
-      console.log("🔴 No hay usuario, redirigiendo a login...");
       router.replace("/login");
     } else if (!["creator", "admin", "worker"].includes(user?.typeUser)) {
-      console.log("⚠️ Usuario no autorizado, redirigiendo a badRequest...");
       router.replace("/badRequest");
     }
   }, [user, router, isMounted]);

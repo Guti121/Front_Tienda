@@ -11,9 +11,11 @@ import {
   Alert,
   Platform,
   SafeAreaView,
+  ActivityIndicator,
+  Image,
 } from "react-native";
 import { handleListProductFilter } from "./axiosRequest";
-import theme from "../themeStyles/theme";
+import theme, { height, width } from "../themeStyles/theme";
 import {
   checkIcon,
   iconBarCode,
@@ -61,14 +63,12 @@ export default function Bill() {
       setLoading(true);
       setError(null);
       const token = await expiredGetToken();
-      console.log(token, "token nn");
       if (!token) {
         deleteTokenStorage();
         router.replace("/login");
         return;
       }
       let request = await handleListProductFilter(productFilter, token);
-      console.log(request);
       if (!request) {
         setArrayProducts(null);
         setError("No se encontraron productos");
@@ -137,26 +137,26 @@ export default function Bill() {
 
   const empty = async () => {
     const result = await Storage.getItem("arrayCar");
-    console.log(result, "empty car ?");
     if (result && JSON.parse(result).length > 0) {
-      console.log("console log");
       setEmptyCar(true);
     } else {
       setEmptyCar(false);
     }
   };
+
+  
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View
         style={{
           flex: 1,
           backgroundColor: { ...theme.backgroundColorPrincipal },
+          padding:5
         }}
       >
         {notification && (
           <BarNotification
             icon={checkIcon()}
-            message={`Producto agregado(s) con exitos`}
           />
         )}
         <View style={styles.containerFilter}>
@@ -189,14 +189,20 @@ export default function Bill() {
           </View>
         </View>
 
-        {loading && <Text style={{ ...theme.textNormal }}>Cargando...</Text>}
+        {loading && <ActivityIndicator size="small" color="black" />}
         {error && (
           <Text style={{ ...theme.errorText, fontSize: 15 }}>{error}</Text>
         )}
         <FlatList
           style={styles.containerFlatlist}
           data={arrayProducts}
-          renderItem={({ item }) => (
+          numColumns={2}
+          renderItem={({ item }) => {  
+            const imageUri = item?.image?.trim()
+              ? item.image
+              : "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
+          return(
+            
             <Pressable
               style={[
                 styles.containerProduct,
@@ -206,36 +212,29 @@ export default function Bill() {
                 onpressedIn(item.id, item.nombre, item.valor);
               }}
             >
-              <Text style={styles.textProductsTitle}>{item.nombre}</Text>
-              <View style={styles.containerProductText}>
-                <View style={styles.containerText}>
-                  <Text style={styles.textProductsSubTitle}>Unidades</Text>
-                  <Text style={styles.textProducts}>
-                    {item.unidades_disponibles}
-                  </Text>
-                </View>
+              
+              <Image
+                source={{ uri:imageUri }}
+                  style={{ width:'90%', height: 250, resizeMode: "cover" }}
+              />
+             
+              <View style={styles.containerText}>
 
-                <View style={styles.containerText}>
-                  <Text style={styles.textProductsSubTitle}>Color</Text>
-                  <Text style={styles.textProducts}>{item.color}</Text>
-                </View>
-
-                <View style={styles.containerText}>
-                  <Text style={styles.textProductsSubTitle}>Valor</Text>
+              <Text numberOfLines={1} ellipsizeMode="tail"  style={styles.textProductsTitle}>{item.nombre}</Text>          
+              <Text style={styles.textProducts}>
+                  {pesosFormat(item.valor)}
+              </Text>
                   <Text style={styles.textProducts}>
-                    {pesosFormat(item.valor)}
+                    {item.unidades_disponibles}-Unid
                   </Text>
-                </View>
+              <Text style={styles.textProducts}>Tipo {item.tipo_producto}</Text>
+
               </View>
-              <Text style={styles.textProductsSubTitle}>Tipo producto</Text>
-
-              <Text style={styles.textProducts}>{item.tipo_producto}</Text>
-
               <Text style={{ ...theme.textNames }}>
                 # {item.numero_producto}
               </Text>
             </Pressable>
-          )}
+          )}}
           keyExtractor={(item) => item.id.toString()} // Convierte `id` en string si es un número
         />
         <Pressable
@@ -283,10 +282,8 @@ export default function Bill() {
 export const getArrayCar = async (producto, cantidad, valorPro, nombrePro) => {
   try {
     const arrayResult = await Storage.getItem("arrayCar");
-    console.log(arrayResult);
     const array = arrayResult ? JSON.parse(arrayResult) : [];
     const newDetails = [...array, { producto, nombrePro, cantidad, valorPro }];
-    console.log(newDetails, "newDetails");
     await Storage.setItem("arrayCar", JSON.stringify(newDetails));
   } catch {
     console.error("Error al agregar detalle:", error);
@@ -308,7 +305,6 @@ function ModalContainer({
   const [count, setCount] = useState(1);
   const [product, setProduct] = useState(null);
   const [nombreProduct, setNombreProduct] = useState(null);
-  console.log(product);
 
   const details = {
     producto: product,
@@ -321,7 +317,6 @@ function ModalContainer({
     setModalProduct(state);
     setProduct(idProduct);
     setNombreProduct(nombreProductPress);
-    console.log(product);
   }, [state]);
 
   //funcion para incrementar el numero de productos en el modal
@@ -337,7 +332,7 @@ function ModalContainer({
       <View style={styles.modalStyle}>
         <View style={styles.modal}>
           <View style={styles.headModal}>
-            <Text style={styles.textProductsTitle}>{nombreProduct}</Text>
+            <Text numberOfLines={1} ellipsizeMode="tail" style={styles.textProductsTitle}>{nombreProduct}</Text>
             <Text style={styles.textProducts}>Cantidad</Text>
           </View>
           <View style={styles.containerCount}>
@@ -376,7 +371,6 @@ function ModalContainer({
   );
 }
 
-const { width, height } = Dimensions.get("window");
 
 const styles = StyleSheet.create({
   //Views containers
@@ -392,39 +386,30 @@ const styles = StyleSheet.create({
   },
 
   containerFlatlist: {
-    padding: 10,
     height: "100%",
-    width: width,
+    width: '100%'
+    
   },
   containerProduct: {
     ...theme.shadow,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 5,
-    margin: 5,
-    borderRadius: 10,
+    alignItems:'center',
+    justifyContent:'center',
+    margin: 10,
+    width:'50%',
+    paddingHorizontal:10,
+    paddingVertical:30,
 
     ...theme.backgroundColorPrincipal,
   },
-  containerProductText: {
-    alignItems: "center",
-    justifyContent: "center",
-
-    margin: 5,
-    padding: 5,
-
-    flexDirection: "row",
-  },
+ 
   containerText: {
-    alignItems: "center",
+    width:'100%',
     flexDirection: "column",
-    margin: 5,
   },
 
   //Text
   textFilter: {
     ...theme.textNormal,
-
     margin: 5,
     fontSize: 18,
   },
@@ -432,7 +417,7 @@ const styles = StyleSheet.create({
     ...theme.textTitle,
     marginTop: 5,
     padding: 2,
-    fontSize: 25,
+    fontSize:15,
   },
   textProductsSubTitle: {
     ...theme.textTitle,
@@ -441,8 +426,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   textProducts: {
-    ...theme.textNormal,
-    fontSize: 15,
+    ...theme.textNames,
+    fontSize: 13,
     margin: 5,
   },
 
@@ -472,6 +457,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+
   modal: {
     backgroundColor: "white",
 
@@ -484,6 +470,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
+
   headModal: {
     alignItems: "center",
     marginBottom: 10,
@@ -492,6 +479,7 @@ const styles = StyleSheet.create({
     width: "100%",
     borderColor: "#d0d0d0",
   },
+
   containerCount: {
     ...theme.textInputGlobal,
     height:'auto',
@@ -499,6 +487,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     flexDirection: "row",
   },
+  
   textCount: {
     marginVertical: 5,
     marginHorizontal: 20,

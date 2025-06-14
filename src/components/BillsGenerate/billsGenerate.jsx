@@ -133,7 +133,11 @@ export default function BillsGenerate() {
         <FlatList
           style={{ height: "90%" }}
           data={bills?.facturas || []}
-          renderItem={({ item }) => (
+          renderItem={({ item }) => {
+              const fechaObjeto = new Date(item.fecha);
+              const fecha = fechaObjeto.toISOString().split("T")[0]; // "2025-02-10"
+              const hora = fechaObjeto.toTimeString().split(" ")[0]; // "22:22:52"
+            return(
             <Pressable
               onPress={() => {
                 detailBills(item.id);
@@ -145,7 +149,8 @@ export default function BillsGenerate() {
                   <Text style={{ ...theme.textNames }}>#:{item.id}</Text>
                 </View>
                 <Text style={styles.textFlatlist}>Fecha</Text>
-                <Text>{item.fecha}</Text>
+                <Text>{fecha}</Text>
+                <Text>{hora}</Text>
               </View>
               <View style={styles.containerDetails}>
                 <Text style={styles.textFlatlist}>Total</Text>
@@ -156,7 +161,7 @@ export default function BillsGenerate() {
                 </Text>
               </View>
             </Pressable>
-          )}
+          )}}
           keyExtractor={(item) => item.id.toString()}
         />
       </View>

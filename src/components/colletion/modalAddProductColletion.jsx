@@ -12,7 +12,7 @@ import {
 import { handleTypeProduct } from "./axiosRequest";
 import { expiredGetToken } from "../axios/generalAxiosRequest";
 import theme, { height, width } from "../themeStyles/theme";
-import { Link, useFocusEffect } from "expo-router";
+import { Link, router, useFocusEffect } from "expo-router";
 
 function ModalTypeProduct({ state, itemPressed, close }) {
   const [stateModal, setStateModal] = useState(state);
@@ -20,46 +20,38 @@ function ModalTypeProduct({ state, itemPressed, close }) {
   const [stateBottomCancel, setStateBottomCancel] = useState(false);
   // Paginación
   const [products, setProducts] = useState([]); // Datos acumulados
-  const [page, setPage] = useState(1); // Página actual
-  const [hasNextPage, setHasNextPage] = useState(true); // Control de fin de datos
+  const [nextPage, setNextPage] = useState(null); // Control de fin de datos
   const [error, setError] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
-      console.log("useEffect activado");
       setStateModal(state);
 
       if (state) {
-        setHasNextPage(true);
-        console.log("Reseteando productos y paginación...");
+        setNextPage(null);
         setProducts([]);
-        fetchData(1); // Solo cuando el modal está abierto y se reinicia la paginación
+        fetchData(); // Solo cuando el modal está abierto y se reinicia la paginación
 
-        setPage(1); // Se activará el useEffect que llama a fetchData
       }
       return () => {
-        console.log("useEffect desactivado");
-        setHasNextPage(true);
+        setNextPage(null);
       };
     }, [state]),
   ); // Asegúrate de incluir dependencias relevantes
 
-  const fetchData = async (page) => {
-    if (loading || !hasNextPage) return; // Prevenir múltiples llamadas
+  const fetchData = async (nextPage) => {
+    if (loading) return; // Prevenir múltiples llamadas
     setLoading(true);
 
     try {
       const token = await expiredGetToken();
-      console.log("token", token);
-      console.log("páge", page);
-      const response = await handleTypeProduct(token, page); // Función que soporta paginación
-      console.log(response, "response");
+      const response = await handleTypeProduct(token, nextPage); // Función que soporta paginación
       if (response.data.results) {
         setProducts((prev) => [...prev, ...response.data.results]);
-        setHasNextPage(!!response.data.next); // Revisar si hay más páginas
+        setNextPage(response.data.next); // Revisar si hay más páginas
       }
+      
     } catch (error) {
-      console.log("Error fetching data:", error);
       setError(
         String(error).length > 30
           ? "Ocurrió un error inesperado. Inténtalo de nuevo."
@@ -72,18 +64,13 @@ function ModalTypeProduct({ state, itemPressed, close }) {
 
   const handleEndReached = () => {
     // Controla que solo se carguen más productos si hay más páginas y no está en carga
-    if (hasNextPage && !loading) {
-      console.log("este es el valor de set Page", page);
-      setPage((prev) => {
-        const nextPage = prev + 1;
-        fetchData(nextPage); // Llamar a fetchData con la página actualizada
-        return nextPage;
-      });
+    if (nextPage && !loading) {
+      fetchData(nextPage); // Llamar a fetchData con la página actualiza
     }
   };
 
   return (
-    <Modal transparent={true} animationType="fade" visible={stateModal}>
+    <Modal transparent={true} animationType="fade" visible={state}>
       <TouchableWithoutFeedback onPressOut={() => close()}>
         <View style={styles.modalcontainerPrincipal}>
           <View style={styles.modalViewPrincipalContainer}>
@@ -115,11 +102,20 @@ function ModalTypeProduct({ state, itemPressed, close }) {
               }
               ListEmptyComponent={() =>
                 !loading && (
-                  <View style={{borderWidth:1}}>
-                  <Text style={{ textAlign: "center", marginVertical: 20 }}>
-                    No hay productos disponibles.
-                  </Text>
-                  <Link href="/myStoreSettings/costsMyStoreDrawer">Configurar Costos</Link>;
+                  <View style={{ margin: 5 }}>
+                    <Text style={{ textAlign: "center", marginVertical: 20 }}>
+                      No hay productos disponibles.
+                    </Text>
+                    <Pressable
+                      onPress={() => {
+                        close()
+                        router.push("/products/addTypeProductDrawer");
+                      }}
+                    >
+                      <Text style={{ color: "blue", textAlign: "center" }}>
+                        Crear tipo de productos
+                      </Text>
+                    </Pressable>
                   </View>
                 )
               }
@@ -135,7 +131,6 @@ function ModalTypeProduct({ state, itemPressed, close }) {
                 setStateBottomCancel(true);
               }}
               onPressOut={() => {
-                console.log(products);
                 close();
                 setStateBottomCancel(false);
               }}

@@ -10,27 +10,29 @@ import theme, { height, width } from "../../themeStyles/theme";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { expiredGetToken } from "../../axios/generalAxiosRequest";
 import { router, useFocusEffect } from "expo-router";
-import { handleTypeProductFilter } from "../axiosRequest";
+import { handleDeleteTypeProduct, handleTypeProductFilter } from "../axiosRequest";
 import { pesosFormat } from "../../icons/functionFormat";
-import { iconFilter, iconPlusAgg } from "../../icons/icons";
+import { iconDelete, iconFilter, iconPlusAgg } from "../../icons/icons";
 import { useRoute } from "@react-navigation/native";
+import { ModalConfirm } from "../../icons/modalConfirm";
 
 // Esta vista lista los tipos de productos en el drawer ProductsDrawer
 export default function TypeProductView() {
   const [listProducts, setListProducts] = useState([]);
   const [searchText, setSearchText] = useState("");
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [nextPage, setNextPage] = useState(null);
   const debounceTimeoutRef = useRef(null);
   //hooks error
   const [error, setError] = useState(false);
   //hooks filter
   const route = useRoute();
-  //Pressables
-
+  //hooks modalConfirm
+  const [modalConfirm, setModalConfirm] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null); // Guarda el item a eliminar
   //iconFilter
-  const [stylePressableIconFilster, setStylePressableIconFilter] =
-    useState(false);
+  const [stylePressableIconFilster, setStylePressableIconFilter] =useState(false);
+
+
 
   const handleChangeText = (text) => {
     setSearchText(text);
@@ -45,11 +47,11 @@ export default function TypeProductView() {
   };
 
   const resetAndFetchProducts = async (filterText) => {
-    setPage(1);
-    setHasMore(true);
-    await fetchProducts(filterText, 1, true);
+    await fetchProducts(filterText, null, true);
   };
 
+
+  //Consulta de type products
   const fetchProducts = async (filterText, currentPage, reset = false) => {
     try {
       const token = await expiredGetToken();
@@ -57,24 +59,24 @@ export default function TypeProductView() {
         router.replace("/login");
         return;
       }
-      console.log("este es el token", token);
+
+      
       const response = await handleTypeProductFilter(
-        filterText,
-        token,
-        currentPage,
+        {value:filterText,
+        url:currentPage,
+        token:token}
+
       );
-      console.log(response, "response.data");
       if (response?.results?.length === 0) {
         setError("No hay resultados disponibles");
       }
-
+      console.log(response)
       const products = reset
         ? response.results
         : [...listProducts, ...response.results];
       setListProducts(products);
-      setHasMore(!!response.next); // Si `response.next` no es null, hay más páginas
+      setNextPage(response.next); // Si `response.next` no es null, hay más páginas
     } catch (error) {
-      console.error("Error al cargar productos:", error);
       setError(
         String(error).length > 100
           ? "Ocurrió un error inesperado. Inténtalo de nuevo."
@@ -84,36 +86,70 @@ export default function TypeProductView() {
   };
 
   const handleLoadMore = () => {
-    if (hasMore) {
-      const nextPage = page + 1;
-      setPage(nextPage);
+    if (nextPage) {
       fetchProducts(searchText, nextPage);
     }
   };
 
+  //delete typroduct
+  const deleteTypeProduct= async(id)=>{
+    try {
+      const token = await expiredGetToken();
+      if (!token) {
+        router.replace("/login");
+        return;
+      }
+      let request = await handleDeleteTypeProduct(token,id)
+      // Recargar productos después de eliminar
+      setSearchText("");
+      setListProducts([]);
+      setNextPage(null)
+      await fetchProducts ("",null,true)
+
+   
+    }catch(error){
+      console.log(error)
+    }
+  }
+
+ //use Effect 
   useFocusEffect(
     useCallback(() => {
       // Reiniciar estados al obtener el foco
       setSearchText("");
       setListProducts([]);
-      setPage(1);
-      setHasMore(true);
-
+      setNextPage(null)
       // Llamar al API con los valores iniciales
-      fetchProducts("", 1);
+      fetchProducts();
 
       // Cleanup function para cuando el componente pierde el foco
       return () => {
         setSearchText("");
         setListProducts([]);
-        setPage(1);
-        setHasMore(true);
+        setNextPage(null)
         setError(false);
       };
-    }, []),
+    },[]),
   );
 
-  return (
+
+
+  //Modal confirm
+  const confirmDelete = (item) => {
+    setSelectedProduct(item);
+    setModalConfirm(true);
+  };
+
+  const handleDeleteConfirmed = () => {
+    if (selectedProduct) {
+      deleteTypeProduct(selectedProduct);
+      setSelectedProduct(null);
+      setModalConfirm(false);
+    }
+  };
+//-----------------------------------------------------------------------
+
+return (
     <View style={{ flex: 1 }}>
       <View style={styles.viewHeaderContainer}>
         <Text style={styles.textHeader}>Tipo de Productos</Text>
@@ -147,19 +183,29 @@ export default function TypeProductView() {
         <FlatList
           data={listProducts}
           renderItem={({ item }) => (
-            <Pressable style={styles.viewContainerFlatlist}>
-              <Text style={styles.textDetails}>Tipo de producto</Text>
+            <View style={styles.viewContainerFlatlist}>
               <View style={styles.viewDetailsFlatlist}>
-                <Text style={{ ...theme.textTitle }}>{item.tipo_producto}</Text>
+                <Text  numberOfLines={2} ellipsizeMode="tail"
+                style={{ ...theme.textTitle, height:'100%' }}>{item.tipo_producto}</Text>
               </View>
-            </Pressable>
+                 <Pressable style={{padding:10}} onPress={()=>confirmDelete(item.id)}> 
+                  {iconDelete("red")}
+                  </Pressable> 
+            </View>
           )}
           keyExtractor={(item) => item.id.toString()}
           onEndReached={handleLoadMore} // Detecta el final del scroll
           onEndReachedThreshold={0.5} // Umbral para disparar la carga de más datos
         />
+        <ModalConfirm 
+            state={modalConfirm}
+            message="¿Deseas eliminar este tipo de producto?"
+            handleIPositiveButton={handleDeleteConfirmed}
+            onClose={() => setModalConfirm(false)}
+        />
       </View>
     </View>
+
   );
 }
 
@@ -181,7 +227,7 @@ const styles = StyleSheet.create({
     width: width * 0.9,
     flexDirection: "row",
   },
-  textHeader: { ...theme.textTitle },
+  textHeader: { ...theme.textTitle, },
   viewBody: {
     flex: 1, // Permitir que el cuerpo ocupe el espacio restante
     marginHorizontal: 10,
@@ -194,6 +240,8 @@ const styles = StyleSheet.create({
     ...theme.borderColorInput,
     padding: 2,
     margin: 5,
+    alignItems:'center',
+    ...theme.shadow
   },
   nameItemText: {
     ...theme.textTitle,
@@ -209,13 +257,16 @@ const styles = StyleSheet.create({
   viewDetailsFlatlist: {
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderRadius: 10,
+    borderBottomWidth: 1,
+    padding:10,
+
+    width:"90%",
     ...theme.borderColorInput,
     flex: 1,
   },
   textDetails: {
     textTransform: "capitalize",
+    width:'100%'
   },
   inputTextStyle: {
     ...theme.textInputGlobal,

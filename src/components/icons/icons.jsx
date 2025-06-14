@@ -46,15 +46,15 @@ export function checkIcon(color, size) {
   );
 }
 export function iconBroom() {
-  return <MaterialCommunityIcons name="broom" size={30} color="white" />;
+  return <MaterialCommunityIcons name="broom" size={24} color="red" />;
 }
 
 export function iconInvoice() {
   return (
     <FontAwesome6
       name="file-invoice-dollar"
-      size={30}
-      color="rgb(60, 196, 60)"
+      size={24}
+      color='white'
     />
   );
 }
@@ -149,4 +149,10 @@ export function iconCheckBox({size, color}) {
 
 export function iconQrCode({size,color}){
   return <FontAwesome name="qrcode" size={size || 24} color={color||"black"} />
+}
+
+//icon Image 
+
+export function iconImage({size,color}){
+  return <FontAwesome name="file-image-o" size={size || 24} color={color || "black"} />
 }

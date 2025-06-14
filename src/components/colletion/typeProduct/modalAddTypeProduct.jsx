@@ -35,7 +35,6 @@ export const ModalAddTypeProduct = () => {
           token,
           nameTypeProduct,
         });
-        console.log(request);
         if (request.status === 201) {
           setStateBar(true);
           setNameTypeProduct("");

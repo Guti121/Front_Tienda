@@ -16,6 +16,7 @@ import { router } from "expo-router";
 import { deleteTokenStorage } from "../token/token";
 import { useDispatch } from "react-redux";
 import { setUser } from "../../redux/userSlice";
+import Storage from "../token/localstorage";
 
 export default function FormLogin() {
   //Estados de los input para el form
@@ -35,13 +36,16 @@ export default function FormLogin() {
 
   //Funcion para hacer el llamado axios y posterio al backend
   const login = async () => {
-    console.log(password, username);
     try {
       const request = await handleLogin(username, password);
       dispatch(setUser(request));
       setCallComponent(true);
     } catch (error) {
-      deleteTokenStorage();
+      await Storage.removeItem("time");
+      await Storage.removeItem("username");
+      await Storage.removeItem("token");
+      await Storage.removeItem("Refreshtoken");
+      await Storage.removeItem("user");
       dispatch(setUser(null));
       setError("Verifique las credenciales enviadas");
     }
@@ -50,7 +54,6 @@ export default function FormLogin() {
   //cambio de estado para realizar el reenvio a vista
   useEffect(() => {
     if (callComponent) {
-      console.log("entro a callComponent");
       router.replace("/drawer");
     }
   }, [callComponent]);
@@ -60,7 +63,7 @@ export default function FormLogin() {
         <View style={[styles.container, theme.shadow]}>
           <View style={styles.containerTextPresentation}>
             <Text style={styles.textTitle}>Sistema De Inventario</Text>
-            <Text style={styles.textNames}>Euphoria Tienda</Text>
+            <Text style={styles.textNames}>My stock app</Text>
           </View>
           <View style={styles.containerInputs}>
             <Text style={styles.textNormal}>Correo:</Text>

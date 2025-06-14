@@ -10,7 +10,6 @@ import { Calendar } from "react-native-calendars";
 
 export const ModalCalendar = ({ state, onClose }) => {
   const [selectedDate, setSelectedDate] = useState("");
-  console.log("entre");
   const handleDayPress = (day) => {
     onClose(day.dateString);
     setSelectedDate(day.dateString);

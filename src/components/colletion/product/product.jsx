@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Text,
   View,
+  Image,
 } from "react-native";
 import theme, { width } from "../../themeStyles/theme";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -20,8 +21,7 @@ import { useRoute } from "@react-navigation/native";
 export default function ProductView() {
   const [listProducts, setListProducts] = useState([]);
   const [searchText, setSearchText] = useState("");
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [nextPage, setNextPage] = useState(null);
   const debounceTimeoutRef = useRef(null);
   //hooks filter
   const route = useRoute();
@@ -45,12 +45,11 @@ export default function ProductView() {
   };
 
   const resetAndFetchProducts = async (filterText) => {
-    setPage(1);
-    setHasMore(true);
-    await fetchProducts(filterText, 1, true);
+    setNextPage(null)
+    await fetchProducts(filterText, null, true);
   };
 
-  const fetchProducts = async (filterText, currentPage, reset = false) => {
+  const fetchProducts = async (filterText,nextPage,reset = false) => {
     try {
       const token = await expiredGetToken();
       if (!token) {
@@ -61,10 +60,9 @@ export default function ProductView() {
       const response = await handleListProductFilterAdmin(
         filterText,
         token,
-        currentPage,
+        nextPage,
         filter,
       );
-      console.log(response, "response.data");
       if (response?.results?.length === 0) {
         setError("No hay resultados disponibles");
       }
@@ -73,9 +71,8 @@ export default function ProductView() {
         ? response.results
         : [...listProducts, ...response.results];
       setListProducts(products);
-      setHasMore(!!response.next); // Si `response.next` no es null, hay más páginas
+      setNextPage(response.next); // Si `response.next` no es null, hay más páginas
     } catch (error) {
-      console.error("Error al cargar productos:", error);
       setError(
         String(error).length > 100
           ? "Ocurrió un error inesperado. Inténtalo de nuevo."
@@ -85,9 +82,7 @@ export default function ProductView() {
   };
 
   const handleLoadMore = () => {
-    if (hasMore) {
-      const nextPage = page + 1;
-      setPage(nextPage);
+    if (nextPage) {
       fetchProducts(searchText, nextPage);
     }
   };
@@ -97,23 +92,20 @@ export default function ProductView() {
       // Reiniciar estados al obtener el foco
       setSearchText("");
       setListProducts([]);
-      setPage(1);
-      setHasMore(true);
+      setNextPage(null);
 
       if (route.params?.returnedValue) {
-        console.log("Valor recibido del modal:", route.params.returnedValue);
         setFilter(route.params.returnedValue);
-        fetchProducts("", 1);
+        fetchProducts("", null);
       } else {
         // Llamar al API con los valores iniciales
-        fetchProducts("", 1);
+        fetchProducts("", null);
       }
       // Cleanup function para cuando el componente pierde el foco
       return () => {
         setSearchText("");
         setListProducts([]);
-        setPage(1);
-        setHasMore(true);
+        setNextPage(null);
         setError(false);
       };
     }, [filter]),
@@ -152,7 +144,10 @@ export default function ProductView() {
       <View style={styles.viewBody}>
         <FlatList
           data={listProducts}
-          renderItem={({ item }) => (
+          renderItem={({ item }) => {const imageUri = item?.image?.trim()
+              ? item.image
+              : "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
+              return(
             <Pressable
               onPress={() => {
                 // Navega a la nueva página con el ID como parámetro
@@ -170,22 +165,31 @@ export default function ProductView() {
                     ]
               }
             >
-              <Text style={styles.nameItemText}>{item.nombre}</Text>
+              <Text  numberOfLines={1} style={styles.nameItemText}>{item.nombre}</Text>
+              <Image
+                source={{ uri:imageUri }}
+    
+                style={{ width:200, height: 250, resizeMode: "cover"}}
+              />
               <View>
                 <View style={styles.viewBodyContainerFlatlist}>
                   <View style={styles.viewDetailsFlatlist}>
                     <Text style={styles.textDetails}>valor</Text>
-                    <Text>{pesosFormat(item.valor)}</Text>
+                    <Text style={styles.textItemsprops}>{pesosFormat(item.valor)}</Text>
                   </View>
-                  <View style={styles.viewDetailsFlatlist}>
-                    <Text style={styles.textDetails}>Color</Text>
-                    <Text>{item.color}</Text>
-                  </View>
+                  
                   <View style={styles.viewDetailsFlatlist}>
                     <Text style={styles.textDetails}>unidades</Text>
-                    <Text>{item.unidades_disponibles}</Text>
+                    <Text style={styles.textItemsprops}>{item.unidades_disponibles}</Text>
                   </View>
                 </View>
+                <View style={styles.viewDetailsFlatlist}>
+                    <Text style={styles.textDetails}>Detalles</Text>
+                    <Text
+                    numberOfLines={1}
+                    style={styles.textItemsprops}
+                    >{item.detalles}</Text>
+                  </View>
               </View>
               <Text style={{ ...theme.textNames }}>
                 #{item.numero_producto}
@@ -195,8 +199,9 @@ export default function ProductView() {
                   Agotado
                 </Text>
               )}
+              
             </Pressable>
-          )}
+          )}}
           keyExtractor={(item) => item.id.toString()}
           onEndReached={handleLoadMore} // Detecta el final del scroll
           onEndReachedThreshold={0.5} // Umbral para disparar la carga de más datos
@@ -232,13 +237,12 @@ const styles = StyleSheet.create({
   //flatlist styles
   viewContainerFlatlist: {
     backgroundColor: "white",
-    borderWidth: 2,
-    borderRadius: 10,
-    ...theme.borderColorInput,
-    padding: 2,
+    ...theme.shadow,
+    padding: 5,
     margin: 5,
   },
   nameItemText: {
+    margin:5,
     ...theme.textTitle,
     textTransform: "capitalize",
   },
@@ -250,15 +254,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   viewDetailsFlatlist: {
+    padding:5,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderRadius: 10,
+    borderBottomWidth: 1,
     ...theme.borderColorInput,
     flex: 1,
   },
   textDetails: {
     textTransform: "capitalize",
+    fontSize:15
+  },
+  textItemsprops:{
+    textTransform: "capitalize",
+    ...theme.textNames,
+    fontSize:15,
+
   },
   inputTextStyle: {
     ...theme.textInputGlobal,

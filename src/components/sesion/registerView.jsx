@@ -84,7 +84,6 @@ export default function FormRegister() {
         setValidate("¡Usuario creado con éxito!");
       }
     } catch (error) {
-      console.log(error);
       setUsernameError(error.response?.data?.username || false);
       setEmailError(error.response?.data?.email || false);
       setError("Verifique los datos ingresados");
@@ -176,15 +175,15 @@ export default function FormRegister() {
               {error && <Text style={{ color: "red" }}>{error}</Text>}
               {validate && <Text style={{ color: "green" }}>{validate}</Text>}
 
-              <Pressable
+              {/*<Pressable  
                 disabled={!!error}
                 style={[theme.pressable, isPressed || (error && theme.pressed)]}
                 onPressIn={() => setIsPressed(true)}
                 onPressOut={() => setIsPressed(false)}
-                onPress={registerUser}
+                //onPress={registerUser}
               >
                 <Text style={theme.textPressable}>Registrarse</Text>
-              </Pressable>
+              </Pressable> */}
             </View>
           </View>
         </View>

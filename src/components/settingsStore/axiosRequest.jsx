@@ -64,7 +64,6 @@ export async function handleDeleteCostsStore(token){
     const url=`${baseUrl}config/destroy/`
     try{
         let request = await deleteRequest(url,token)
-        console.log(request)
         return request
     }catch(error)
     {

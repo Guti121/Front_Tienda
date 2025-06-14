@@ -14,11 +14,9 @@ export async function handleLogin(username, password) {
     const access = request.data.access;
     const refresh = request.data.refresh;
     const user = request.data.user;
-    console.log(user, "usuarioTYpo");
     save({ access, refresh, username, user });
     return user;
   } catch (error) {
-    console.log("error desde login handle login", error.response.data, error);
     throw error.response.data.error;
   }
 }
@@ -27,13 +25,11 @@ export async function handleLogout() {
   const url = `${baseUrl}logout/`;
   try {
     const token = await Storage.getItem("Refreshtoken");
-    console.log(token);
     const data = { refresh: token };
     let response = await axios.post(url, data);
     await deleteTokenStorage();
     return response;
   } catch (error) {
-    console.log("error desde logout", error.response.data, error);
     throw error.response.data.error;
   }
 }

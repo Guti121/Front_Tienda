@@ -7,6 +7,7 @@ export async function handleListProductFilter(value, token) {
 
   try {
     let request = await getRequest(url, token);
+    console.log(request)
     return request.data;
   } catch {
     return null;
@@ -14,7 +15,6 @@ export async function handleListProductFilter(value, token) {
 }
 
 export async function filterCodeBar(date, token) {
-  console.log(date);
   const url = `${baseUrl}facturas/codigo_de_barras_text/`;
   const data = {
     codigoBarras: date,
@@ -23,7 +23,6 @@ export async function filterCodeBar(date, token) {
     const request = await postRequest(url, data, token);
     return request.data;
   } catch (error) {
-    console.log(error, "este es mi error");
     return false;
   }
 }
@@ -35,11 +34,8 @@ export async function handleInvoice(date, token) {
   };
   try {
     const request = await postRequest(url, data, token);
-    console.log(data);
-    console.log("exito en la factuarcion", request);
     return request;
   } catch (error) {
-    console.log("error desde query facturacion", error.response.data.error);
     throw error.response.data.error;
   }
 }

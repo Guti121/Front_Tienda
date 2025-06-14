@@ -5,7 +5,7 @@ import axios from "axios";
 import { save } from "./localstorage";
 import { router } from "expo-router";
 
-const baseUrl = "http://192.168.20.163:8000/";
+const baseUrl = "https://api.mystockapp.site/";
 
 //redirect Login
 export const deleteTokenStorage = async () => {
@@ -32,7 +32,6 @@ export async function expiredTimeToken() {
     }
 
     currentTime = Date.now();
-    console.log(currentTime, "current time", timeExpiration, username, refresh);
 
     if (currentTime > parseInt(timeExpiration)) {
       await refreshToken(refresh, username);
@@ -56,7 +55,6 @@ async function refreshToken(refreshToken, username) {
       headers,
       withCredentials: true,
     });
-    console.log("respuesta del post token", response.data);
     if (
       response.status === 200 &&
       response.data.access &&

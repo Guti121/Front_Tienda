@@ -8,7 +8,6 @@ const CustomDrawerContent = (props) => {
   const segments = useSegments();
   const currentScreen = segments[segments.length - 1]; // Obtiene la pantalla actual
 
-  console.log(props);
 
   return (
     <DrawerContentScrollView

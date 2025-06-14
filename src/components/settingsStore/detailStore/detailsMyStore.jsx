@@ -41,7 +41,7 @@ export default function DetailsMyStore() {
       setFormData(request.data);
       setOriginalData(request.data);
     } catch (error) {
-      console.log(error);
+      console.log("error");
     }
   };
 
@@ -80,15 +80,12 @@ export default function DetailsMyStore() {
         // Solo hacer la petición si hay cambios
         if (Object.keys(updatedFields).length > 0) {
         try {
-            console.log(updatedFields)
             let request =await handleUpdateStore(token,updatedFields); // Llamada a la API
             setError('Se modificaron los campos'); 
             setColor('')
             errorBar()
             setOriginalData(request); // Actualiza los datos originales con los nuevos
-        } catch (error) {
-         
-          console.log(error.message); 
+        } catch (error) {         
           setError(error.message); 
           setColor('red')
           errorBar()
@@ -114,10 +111,9 @@ export default function DetailsMyStore() {
             deleteTokenStorage();
             return;
           }
-          let request =await handleDeleteCompany(token)
-          console.log(request)
+          await handleDeleteCompany(token)
+          
       }catch(error){
-        console.log(error.message)
         setError(error.message)
         errorBar()
       }

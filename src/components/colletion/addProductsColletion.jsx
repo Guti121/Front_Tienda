@@ -22,6 +22,7 @@ import { ModalConfirm } from "../icons/modalConfirm";
 import { BarNotification } from "../icons/barNotification";
 import { checkIcon, iconInfo, iconSearch } from "../icons/icons";
 import ModalTypeProduct from "./modalAddProductColletion";
+import ImagePickerWeb from "./componentWebimage";
 
 // Esta vista viene de el drawer addProductsDrawer y tiene como funcion renderizar el formulario
 // Y añadir los nuevos producto a el almacen o stock
@@ -32,8 +33,8 @@ export function AddProductsColletion() {
   const [datesProducts, setDatesProducts] = useState([
     {
       nombre: "",
-      tipo_producto: "",
-      color: "",
+      tipo_producto:"",
+      detalles: "",
       valor_mayor: 0,
       valor_costos_fijos: 0,
       valor: 0,
@@ -51,6 +52,7 @@ export function AddProductsColletion() {
   //hook modal create product
   const [stateModalCreate, setStateModalCreate] = useState(false);
   const [messageModalCreate, setMessageModalCreate] = useState(false);
+  const [productImage, setProductImage] = useState(null);
 
   //Error
   const [errorMessage, setErrorMessage] = useState(false);
@@ -64,44 +66,54 @@ export function AddProductsColletion() {
 
   const handleRequest = async (which) => {
     try {
-      console.log("entre a handle", which);
       token = await expiredGetToken();
       if (!token) {
         router.replace("login/");
       }
-      console.log("token", token);
       if (which === "SRP") {
-        console.log("entre al if");
         try{
           const request = await handleSuggestedRetailPrice(
           datesProducts[0].valor_mayor,
           token
         );
 
-        console.log("request desde component", request);
         setMessageSuggested(request.data);
-        console.log(messageSuggested);
         }
         catch(error){
           setErrorParams(error?.response?.data?.error ||'Error al Buscar Datos')
-          console.log('error',error)
         }
       }
       // Si which es HTP significa que estamos consultando los tipos de productos existentes
       if (which === "HTP") {
-        console.log("entre");
         setModalState(true);
       }
 
       if (which === "CreateProduct") {
         try {
-          console.log(datesProducts[0]);
+          const data = datesProducts[0];
+          const formData = new FormData();
+
+          // Agregar automáticamente todos los campos excepto la imagen
+          for (const key in data) {
+            if (data[key] !== undefined && key !== "image") {
+              formData.append(key, data[key]);
+            }
+          }
+
+          
+          if (productImage?.file){
+            formData.append('image',productImage.file)
+          }
+          console.log(formData)
           setStateModalCreate(false);
-          const request = await handleCreateProduct(token, datesProducts[0]);
+          const request = await handleCreateProduct(token,formData);
+          console.log(request)
           setMessageModalCreate(true);
           setTimeout(() => {
             setMessageModalCreate(false);
           }, 1500);
+
+          clearForm()
         } catch (error) {
           const errorMessage =
             error.response?.data?.error?.error ||
@@ -109,7 +121,7 @@ export function AddProductsColletion() {
             error.response?.data?.detail || // Si no, usa error.response.data.detail
             error.response?.data || // Si tampoco, usa error.response.data completo
             "Error desconocido";
-          console.log("Estoy en ERROR:", error);
+            console.log(errorMessage)
           setErrorMessage(
             typeof errorMessage === "string" && errorMessage.length > 100
               ? "Ocurrió un error inesperado. Inténtalo de nuevo."
@@ -118,10 +130,8 @@ export function AddProductsColletion() {
         }
       }
     } catch (error) {
-      console.log("error desde componente ", error);
       if (error.response.data.error) {
         setErrorParams(error.response.data.error);
-        console.log("error Debes ingresar un monto valido");
       }
     }
   };
@@ -139,14 +149,11 @@ export function AddProductsColletion() {
   const isNum = (num) => {
     if (isNaN(parseInt(num))) {
       setErrorMessage("Verificar los Valores numericos!");
-    } else {
-      console.log("es un numero", parseInt(num));
-    }
+    } 
   };
   //-----------------------------------------------------------------------
   //resivimos el item seleccionado en el modal
   const typeProductSelect = (item) => {
-    console.log(item, "este es el item");
     setTypeProductList(item);
     setModalState(false);
     addTolist("tipo_producto", item.id);
@@ -169,8 +176,8 @@ export function AddProductsColletion() {
     ${product.nombre}\n
     Tipo Producto: 
     ${typeProductList.tipo_producto}\n
-    Color: 
-    ${product.color}\n
+    detalles: 
+    ${product.detalles}\n
     Valor Mayor: 
     ${pesosFormat(product.valor_mayor)}\n
     Valor Costos Fijos: 
@@ -180,7 +187,6 @@ export function AddProductsColletion() {
     Unidades Disponibles: 
     ${product.unidades_disponibles}
     `;
-    console.log(message);
     return message;
   };
 
@@ -196,13 +202,14 @@ export function AddProductsColletion() {
       {
         nombre: "",
         tipo_producto: "",
-        color: "",
+        detalles: "",
         valor_mayor: 0,
         valor_costos_fijos: 0,
         valor: 0,
         unidades_disponibles: 0,
       },
     ]);
+    setProductImage(null);
     setTypeProductList([]);
     setErrorMessage(false);
     setErrorParams(false);
@@ -244,12 +251,13 @@ export function AddProductsColletion() {
               width: width * 0.8,
             }}
           >
-            <Text>Color</Text>
+            <Text>Detalles</Text>
           </View>
           <TextInput
-            value={datesProducts[0].color}
-            onChangeText={(text) => addTolist("color", text)}
-            style={styles.inputInf}
+            value={datesProducts[0].detalles}
+            onChangeText={(text) => addTolist("detalles", text)}
+            style={[styles.inputInf, { height: 100, textAlignVertical: 'top' }]}
+            multiline
           />
           <View
             style={{
@@ -386,6 +394,7 @@ export function AddProductsColletion() {
             </Pressable>
           </View>
           {errorMessage && <Text style={{ color: "red" }}>{errorMessage}</Text>}
+          <ImagePickerWeb image={productImage} setImage={setProductImage} />
         </View>
         <View style={styles.containerPressable}>
           <Pressable

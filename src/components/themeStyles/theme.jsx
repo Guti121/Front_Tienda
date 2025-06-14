@@ -27,7 +27,7 @@ export default {
   },
   textNames: {
     ...defaultFont,
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "bold",
     color: "rgb(155, 155, 155)",
   },

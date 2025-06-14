@@ -57,9 +57,7 @@ export default function AddUserCompany() {
                 deleteTokenStorage();
                 return;
             }
-            console.log('thats my id',id)
             const response = await handleDeleteUserCompany(token,id)
-            console.log('that,s my response',response.data.message)
             setNotificationFunction()
             // Reset and reload users
             setUsers([]);
@@ -91,8 +89,7 @@ export default function AddUserCompany() {
                 setSelectedUserId(item.id);
                 setModalConfirmDelete(true);
                 }} style={{width:'auto',height:'auto'}}>
-
-                {iconDelete()}
+                    {iconDelete()}
             </Pressable>
         </View>
     );
