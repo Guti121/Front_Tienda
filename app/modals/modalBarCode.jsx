@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { Camera, CameraView } from "expo-camera";
 import theme from "../../src/components/themeStyles/theme";
-import { filterCodeBar } from "../../src/components/billing/axiosRequest";
+import { filterCodeBar, filterCodeBarWeb } from "../../src/components/billing/axiosRequest";
 import { expiredGetToken } from "../../src/components/axios/generalAxiosRequest";
 import { useRouter } from "expo-router";
 import { deleteTokenStorage } from "../../src/components/token/token";
@@ -19,6 +19,7 @@ import { checkIcon, iconCar } from "../../src/components/icons/icons";
 import { isWeb } from "../../src/components/token/localstorage";
 import { getArrayCar } from "../../src/components/billing/bill";
 import { BarNotification } from "../../src/components/icons/barNotification";
+import Webcam from "react-webcam";
 
 export default function ModalBarCode() {
   const [hasPermission, setHasPermission] = useState(null);
@@ -27,7 +28,7 @@ export default function ModalBarCode() {
   const [barCode, setBarCode] = useState("");
   //hook redirect
   const router = useRouter();
-  const cameraRef = useRef(null);
+  const webcamRef = useRef(null);
 
   //hook estado de modal
   const [stateModal, setStateModal] = useState(false);
@@ -60,37 +61,56 @@ export default function ModalBarCode() {
         router.replace("/login");
         return;
       }
-      const result = await filterCodeBar(data, token);
-      if (result) {
-        setRequestData(result);
-        setStateModal(true);
-      } else {
-        setError(true);
+      if (isWeb){
+        const result = await filterCodeBarWeb(data,token)
+         if (result) {
+          setRequestData(result);
+          setStateModal(true);
+        } else {
+          setError(true);
+        }
+      }
+      else{
+
+        const result = await filterCodeBar(data, token);
+        if (result) {
+          setRequestData(result);
+          setStateModal(true);
+        } else {
+          setError(true);
+        }
       }
     } catch (error) {
       throw error;
     }
   };
   //movil
-  const handleBarcodeScanned = async ({ type, data }) => {
+  const  handleBarcodeScanned = async ({ type, data }) => {
     setScanned(true);
     await handleFilter(data);
   };
   //isweb 
-  const takeAndSendPhoto = async () => {
-  if (cameraRef.current) {
-    const photo = await cameraRef.current.takePictureAsync(); // por defecto, da una URI
 
+  const capture = async () => {
+    const imageSrc = webcamRef.current.getScreenshot(); // base64 string
+
+    if (!imageSrc) return;
+
+    // Convertir base64 a blob
+    const res = await fetch(imageSrc);
+    const blob = await res.blob();
+
+    // Crear un archivo tipo File
+    const file = new File([blob], "foto.jpg", { type: "image/jpeg" });
+
+    // Crear FormData
     const formData = new FormData();
-    formData.append("imagen", {
-      uri: photo.uri,
-      type: "image/jpeg",
-      name: "foto.jpg",
-    });
-    formData.append("cantidad", 1); // opcional
-    console.log(formData.imagen) 
-    }
+    formData.append("imagen", file);
+    formData.append("cantidad", 1);
+    await handleFilter(formData) 
   }
+
+
   //Cierre de modal
   const closeModal = () => {
     setStateModal(false);
@@ -153,12 +173,15 @@ export default function ModalBarCode() {
       {isWeb ?
       <>
       <View style={styles.containerCamera}>
-        <CameraView
-          ref={cameraRef}
-          style={StyleSheet.absoluteFillObject}
-          />
+         <Webcam
+        audio={false}
+        ref={webcamRef}
+        screenshotFormat="image/jpeg"
+        style={styles.video}
+      />
+    
       </View>
-      <Pressable style={styles.pressableContainer} onPress={takeAndSendPhoto}>
+      <Pressable style={styles.pressableContainer} onPress={capture}>
         <Text style={styles.textPressable}>Enviar Foto</Text>
       </Pressable>
       </>

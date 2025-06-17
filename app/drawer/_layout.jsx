@@ -27,7 +27,7 @@ export const getAllowedScreens = (user) => {
     {
       name: "addProductsColletionDrawer",
       title: "Ingreso de producto",
-      allowed: ["creator", "admin"],
+      allowed: ["creator"],
     },
     {
       name: "productsDrawer",

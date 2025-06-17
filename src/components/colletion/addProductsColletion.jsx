@@ -13,7 +13,6 @@ import { useCallback, useEffect, useState } from "react";
 import {
   handleCreateProduct,
   handleSuggestedRetailPrice,
-  handleTypeProduct,
 } from "./axiosRequest";
 import theme, { height, width } from "../themeStyles/theme";
 import { FlatList, ScrollView } from "react-native-gesture-handler";
@@ -107,13 +106,21 @@ export function AddProductsColletion() {
           console.log(formData)
           setStateModalCreate(false);
           const request = await handleCreateProduct(token,formData);
+          
           console.log(request)
           setMessageModalCreate(true);
           setTimeout(() => {
             setMessageModalCreate(false);
-          }, 1500);
-
+            if (request?.data?.id){
+            router.push({
+                  pathname: "/products/detailProduct",
+                  params: { id: request.data.id },
+                });
+          }
+          }, 1500);  
+          
           clearForm()
+          
         } catch (error) {
           const errorMessage =
             error.response?.data?.error?.error ||
@@ -204,7 +211,7 @@ export function AddProductsColletion() {
         tipo_producto: "",
         detalles: "",
         valor_mayor: 0,
-        valor_costos_fijos: 0,
+        valor_costos_fijos: 1000,
         valor: 0,
         unidades_disponibles: 0,
       },

@@ -18,6 +18,7 @@ import { ModalConfirm } from "../../icons/modalConfirm";
 import { BarNotification } from "../../icons/barNotification";
 import { isWeb } from "../../token/localstorage";
 import html2pdf from 'html2pdf.js';
+import { useSelector } from "react-redux";
 
 export default function DetailProduct({ id }) {
   //hook product
@@ -25,16 +26,21 @@ export default function DetailProduct({ id }) {
   const [stateModalConfirm, setStateModalConfirm] = useState(false);
   const [stateBarNotification, setStateBarNotification] = useState(null);
   const [barcodeProduct,setBarCodeProduct] = useState(null)
+  const [error,setError]= useState(false)
   //hook Pressable
 
   //colors
   const [colorIconDelete, setColorIconDelete] = useState("red");
   const [colorIconMinus, setColorIconMinus] = useState("red");
   const [colorIconPlus, setColorIconPlus] = useState("black");
+
+  //user 
+  const user = useSelector((state) => state.user.user);
+  console.log(user.typeUser)
   useFocusEffect(
     useCallback(() => {
+      setError(false)
       handlesProduct();
-
       // Función de limpieza
       return () => {
         setProduct([]);
@@ -52,8 +58,9 @@ export default function DetailProduct({ id }) {
       try {
         if (query == "retrieve") {
           const request = await handleRetrieveProduct(id, token);
-          console.log(request.data)
           setProduct(request.data);
+          console.log(request.data)
+
           const barcode =await handleBarCode(id,token);
           setBarCodeProduct(barcode.barcode)
         }
@@ -69,7 +76,7 @@ export default function DetailProduct({ id }) {
           }, 3000);
         }
       } catch (error) {
-        console.error(error);
+        setError(true)
       }
     } catch {
       router.replace("/login");
@@ -90,8 +97,13 @@ export default function DetailProduct({ id }) {
   };
 
   //Variable para renderizar imagen  
-  const imageUri = barcodeProduct
+  const imageUriBarcode = barcodeProduct
               ? barcodeProduct
+              : "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
+
+  
+  const imageUriProduct = product?.image
+              ? product.image
               : "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
 
   //print codigo de barras 
@@ -140,7 +152,6 @@ const convertImageToBase64 = async (imageUrl) => {
 };
 const generateHTML = (size = "80", base64Image = "", barcodeNumber = "") => {
   const config = sizeConfig[size] || sizeConfig["80"];
-  console.log(config)
 
   return `
     <div style="
@@ -193,8 +204,7 @@ const downloadBarcodePDF = async (size) => {
   }
 
   const config = sizeConfig[size] || sizeConfig["80"];
-  console.log(config,"size")
-  const base64Image = await convertImageToBase64(imageUri);
+  const base64Image = await convertImageToBase64(imageUriBarcode);
   const htmlContent = generateHTML(size, base64Image, product.codigo_barras || "");
 
   const container = document.createElement('div');
@@ -223,6 +233,7 @@ const downloadBarcodePDF = async (size) => {
 
   return (
     <SafeAreaView style={{ flex: 1, justifyContent: "center" }}>
+     {error && <Text style={{color:'red'}}>Error Producto no encontrado</Text>}
       <View style={styles.principalView}>
         {stateBarNotification && (
           <BarNotification
@@ -237,20 +248,20 @@ const downloadBarcodePDF = async (size) => {
           }}
         >
           <View style={styles.containerNumeroProducto}>
-            <Text style={{ ...theme.textNames }}>
+            <Text style={{ ...theme.textNames , fontSize: 20 }}>
               #{product.numero_producto}
             </Text>
           </View>
           <View style={styles.nameView}>
            <Image
-                source={{ uri:imageUri }}
+                source={{ uri:imageUriProduct }}
                   style={{ width:300, height: 350, resizeMode: "cover" }}
               />
-            <Text numberOfLines={2} style={styles.textName}>{product.nombre}</Text>
+            <Text numberOfLines={2} style={[styles.textName , {marginVertical:20}]}>{product.nombre}</Text>
           </View>
           <View style={{flexDirection:'row',width:'100%'}}>
 
-           <View
+           {user.typeUser === 'creator' && <View
               style={{
                 width:'50%'
               }}
@@ -259,7 +270,7 @@ const downloadBarcodePDF = async (size) => {
               <Text style={{ ...styles.textDetail, fontSize: 15 }}>
                 {pesosFormat(product.valor_mayor)}
               </Text>
-            </View>
+            </View>}
             <View
               style={{
                 width:'50%', 
@@ -271,7 +282,18 @@ const downloadBarcodePDF = async (size) => {
                 {pesosFormat(product.valor)}
               </Text>
             </View>
+            
           </View>
+         {user.typeUser === 'creator' && <View
+              style={{
+                width:'50%'
+              }}
+              >
+              <Text style={styles.textTitles}>Valor por mayor CostFijos</Text>
+              <Text style={{ ...styles.textDetail, fontSize: 15 }}>
+                {pesosFormat(product.valor_costos_fijos)}
+              </Text>
+            </View>}
           <View style={styles.containerDetailsView}>
             <View style={styles.containerDetails}>
               <Text style={styles.textTitles}>Tipo de Producto</Text>
@@ -354,7 +376,7 @@ const downloadBarcodePDF = async (size) => {
           
           <View style={styles.nameView}>
             <Image
-                  source={{ uri:imageUri }}
+                  source={{ uri:imageUriBarcode }}
                   style={{ width:300, height: 250, resizeMode: "cover" }}
                   />
           <Pressable onPress={() => setShowPrintSizeModal(true)}>

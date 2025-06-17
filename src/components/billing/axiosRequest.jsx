@@ -1,4 +1,4 @@
-import { baseUrl, postRequest } from "../axios/generalAxiosRequest";
+import { baseUrl, postRequest, postRequestFormData } from "../axios/generalAxiosRequest";
 import { getRequest } from "../axios/generalAxiosRequest";
 
 // Se realiza el llamado a la funcion get para obtener la lista de objetos filtrados
@@ -23,6 +23,18 @@ export async function filterCodeBar(date, token) {
     const request = await postRequest(url, data, token);
     return request.data;
   } catch (error) {
+    return false;
+  }
+}
+
+export async function filterCodeBarWeb(date,token){
+  const url=`${baseUrl}facturas/codigo_de_barras/`; 
+  try{
+    const request = await postRequestFormData(url,date,token)
+    console.log(request.data.producto)
+    return request.data
+  }
+  catch{
     return false;
   }
 }
