@@ -8,9 +8,12 @@ import {
 } from "../axios/generalAxiosRequest";
 
 //request price suggested
-export const handleSuggestedRetailPrice = async (price, token) => {
-  let url = `${baseUrl}config/calculo/`;
-  let data = { valor_mayor: parseInt(price) };
+export const handleSuggestedRetailPrice = async (price, token, margen = 0) => {
+  const url = `${baseUrl}config/calculo/`;
+  const data = {
+    valor_mayor: parseInt(price),
+    ...(margen != 0 && { margen })
+  };
 
   try {
     const request = await postRequest(url, data, token);
@@ -20,6 +23,7 @@ export const handleSuggestedRetailPrice = async (price, token) => {
   }
 };
 
+
 //----------------------------------- TIPO PRODUCTO----------------------------------------
 
 //list typeProduct not filter
@@ -27,7 +31,6 @@ export const handleTypeProduct = async (token, urlPage = null) => {
   let url = urlPage?? `${baseUrl}listType/`;
   try {
     const request = await getRequest(url, token);
-    console.log(request,'request')
     return request;
   } catch (error) {
     throw new Error(error);
@@ -69,9 +72,7 @@ export async function handleDeleteTypeProduct(token,id){
   let url=`${baseUrl}destroytypeProduct/${id}/`
   try{
     const request = await deleteRequest(url,token)
-    console.log(request)
   }catch(error){
-    console.log(error)
   }
 }
 //-----------------------------------PRODUCTO----------------------------------------
@@ -103,7 +104,6 @@ export const handleCreateProduct = async (token, formData) => {
     const request = await postRequestFormData(url, formData, token);
     return request;
   } catch (error) {
-    console.log(error)
     throw error;
   }
 };
@@ -142,7 +142,6 @@ export async function handleListProductFilterAdmin(
 
   try {
     let request = await getRequest(url, token);
-    console.log(request.data)
     return request.data;
   } catch (error) {
     throw error;
@@ -172,3 +171,23 @@ export async function handleUpdateUnitsProduct(token, id, date) {
     throw error;
   }
 }
+
+export const handlePatchProduct = async (id, data, token) => {
+  try{
+    const response = await patchRequest(`${baseUrl}updateProduct/${id}/`,data,token);
+    return response
+  }catch(error){
+    console.error("Error al actualizar el producto:", error);
+    if (error.response) {
+          const status = error.response.status;
+          const data = error.response.data;
+
+          // Si el error es un objeto, lo convertimos a string
+          const readableError = typeof data === 'object' ? JSON.stringify(data) : data;
+
+          throw new Error(`Error ${status}: ${readableError}`);
+        } else {
+          throw new Error('Error desconocido en la solicitud PATCH');
+        }
+      }
+};

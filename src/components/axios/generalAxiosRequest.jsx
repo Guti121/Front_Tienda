@@ -2,6 +2,7 @@ import axios from "axios";
 import { deleteTokenStorage, expiredTimeToken } from "../token/token";
 import Storage from "../token/localstorage";
 import { router } from "expo-router";
+import { showSessionAlert } from "../themeStyles/alerts";
 
 export const baseUrl = "https://api.mystockapp.site/";
 
@@ -16,6 +17,11 @@ export const expiredGetToken = async () => {
     return token;
   } catch {
     await deleteTokenStorage();
+    showSessionAlert(
+        "Sesión expirada",
+        "Tu sesión ha caducado. Por favor, inicia sesión nuevamente.",
+        () => router.replace("/login")
+      );
     router.replace("/login");
   }
 };
@@ -73,7 +79,6 @@ export async function patchRequest(url, data, token) {
 
   try {
     const headers = {
-      "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     };
     const request = await axios.patch(url, data, {

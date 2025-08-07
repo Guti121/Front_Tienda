@@ -26,6 +26,7 @@ import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ModalConfirm } from "../icons/modalConfirm";
 import { pesosFormat } from "../icons/functionFormat";
+import { showSessionAlert } from "../themeStyles/alerts";
 
 export default function ModalCar() {
   const [productsList, setProductList] = useState([]); // Inicializar como array vacío
@@ -134,7 +135,7 @@ export default function ModalCar() {
       }, 1500);
       await findArraysProducts();
     } catch {
-      console.log("error al limpiar carrito");
+      showSessionAlert('Error','Error al limpiar carrito',()=>{})
     }
   };
 

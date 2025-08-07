@@ -7,7 +7,6 @@ export async function handleListProductFilter(value, token) {
 
   try {
     let request = await getRequest(url, token);
-    console.log(request)
     return request.data;
   } catch {
     return null;
@@ -31,7 +30,6 @@ export async function filterCodeBarWeb(date,token){
   const url=`${baseUrl}facturas/codigo_de_barras/`; 
   try{
     const request = await postRequestFormData(url,date,token)
-    console.log(request.data.producto)
     return request.data
   }
   catch{

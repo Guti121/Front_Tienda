@@ -4,7 +4,7 @@ const defaultFont = {
   fontFamily: "",
 };
 const pressableColorDefault = {
-  backgroundColor: "#454545",
+  backgroundColor: "#5e5ce6",
 };
 
 const pressableColorCancel = {
@@ -13,6 +13,31 @@ const pressableColorCancel = {
 export const { width, height } = Dimensions.get("window");
 
 export default {
+
+  colors: {
+    primary: "#5e5ce6", // o el color que tú uses
+    secondary: "#FF4081",
+    textPrimary:"#ffffff",
+    textSecundary:"#cccccc",
+    textTerciary:"#888",
+    backgroundColorWarning:"#1e1e2f",
+    backgroundColor:"#121212",
+    backgroundColorSecondary: "#2c2c2e",
+  },
+  //new button styles
+  button: {
+    marginTop: 5,
+    backgroundColor: "#5e5ce6",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignSelf: "stretch",
+    alignItems: "center",
+ 
+  },
+  textButton: { color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,},
   borderColorInput: {
     borderColor: "#d0d0d0",
   },
@@ -83,7 +108,16 @@ export default {
   },
   textPressable: {
     ...defaultFont,
-    color: "#f2f3f4",
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  removeButton: {
+    backgroundColor: '#ff4d4f',
+    paddingVertical: 6, 
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
   },
   shadow: {
     shadowColor: "black",

@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Modal,
   Platform,
+  Switch,
 } from "react-native";
 import { expiredGetToken } from "../axios/generalAxiosRequest";
 import { Link, router, useFocusEffect } from "expo-router";
@@ -15,13 +16,15 @@ import {
   handleSuggestedRetailPrice,
 } from "./axiosRequest";
 import theme, { height, width } from "../themeStyles/theme";
-import { FlatList, ScrollView } from "react-native-gesture-handler";
-import { pesosFormat, pesosformat } from "../icons/functionFormat";
+import { ScrollView } from "react-native";
+import { cleanNumber, formatToCOP, pesosFormat, pesosformat } from "../icons/functionFormat";
 import { ModalConfirm } from "../icons/modalConfirm";
 import { BarNotification } from "../icons/barNotification";
 import { checkIcon, iconInfo, iconSearch } from "../icons/icons";
 import ModalTypeProduct from "./modalAddProductColletion";
 import ImagePickerWeb from "./componentWebimage";
+import AnimatedButton from "../catalog/stylesCatalogo/buttonAnimate";
+import { isWeb } from "../token/localstorage";
 
 // Esta vista viene de el drawer addProductsDrawer y tiene como funcion renderizar el formulario
 // Y añadir los nuevos producto a el almacen o stock
@@ -46,12 +49,19 @@ export function AddProductsColletion() {
   const [errorParams, setErrorParams] = useState(false);
 
   //Hook modal typeProduct
+  const [productImages, setProductImages] = useState([]); // <- plural
+
   const [modalState, setModalState] = useState(false);
   const [typeProductList, setTypeProductList] = useState([]);
   //hook modal create product
   const [stateModalCreate, setStateModalCreate] = useState(false);
   const [messageModalCreate, setMessageModalCreate] = useState(false);
-  const [productImage, setProductImage] = useState(null);
+  const [isChecked, setIsChecked] = useState(false);
+  const [percent,setPercent] = useState(0)
+  const [isPublic, setIsPublic] = useState(false);
+
+  const [valorMayor,setValorMayor]= useState(0)
+  const [valor,setValor]= useState(0)
 
   //Error
   const [errorMessage, setErrorMessage] = useState(false);
@@ -59,6 +69,7 @@ export function AddProductsColletion() {
   // Establecemos la funcion que va a mostrarnos el precio sugerido
   useFocusEffect(
     useCallback(() => {
+      
       clearForm(); // Llama a la función cuando la pantalla se enfoque
     }, []) // Dependencias vacías para ejecutarlo solo cuando la pantalla se enfoca
   );
@@ -73,7 +84,8 @@ export function AddProductsColletion() {
         try{
           const request = await handleSuggestedRetailPrice(
           datesProducts[0].valor_mayor,
-          token
+          token,
+          percent
         );
 
         setMessageSuggested(request.data);
@@ -99,15 +111,30 @@ export function AddProductsColletion() {
             }
           }
 
-          
-          if (productImage?.file){
-            formData.append('image',productImage.file)
-          }
-          console.log(formData)
+          // Adjuntar múltiples imágenes
+          if (productImages?.length > 0) {
+              productImages.forEach((img, index) => {
+                if (img.file) {
+                  // Web or platforms that provide a File object
+                  formData.append("imagenes", img.file);
+                } else if (img.uri) {
+                  // Mobile: build the file manuall
+                  // y
+                  const uriParts = img.uri.split(".");
+                  const fileType = uriParts[uriParts.length - 1];
+                  formData.append("imagenes", {
+                    uri: img.uri,
+                    name: `image_${index}.${fileType}`,
+                    type: `image/${fileType}`,
+                  });
+                }
+              });
+            }
+
+
           setStateModalCreate(false);
           const request = await handleCreateProduct(token,formData);
           
-          console.log(request)
           setMessageModalCreate(true);
           setTimeout(() => {
             setMessageModalCreate(false);
@@ -120,18 +147,19 @@ export function AddProductsColletion() {
           }, 1500);  
           
           clearForm()
+        
           
         } catch (error) {
           const errorMessage =
             error.response?.data?.error?.error ||
             error.response?.data?.error || // Si existe error.response.data.error, úsalo
             error.response?.data?.detail || // Si no, usa error.response.data.detail
-            error.response?.data || // Si tampoco, usa error.response.data completo
+            error.response?.data?.detalles ||
+            error.response?.datas || // Si tampoco, usa error.response.data completo
             "Error desconocido";
-            console.log(errorMessage)
           setErrorMessage(
-            typeof errorMessage === "string" && errorMessage.length > 100
-              ? "Ocurrió un error inesperado. Inténtalo de nuevo."
+            typeof errorMessage === "string" && errorMessage.length > 100 || errorMessage == "This field may not be blank."
+              ? "Ocurrió un error inesperado,verifica los campos y inténtalo de nuevo."
               : String(errorMessage) // Convertir a string en caso de que sea un objeto o número
           );
         }
@@ -177,6 +205,7 @@ export function AddProductsColletion() {
 
   //Formulamos el mensaje del modalConfirm
   const messageGenerate = () => {
+
     const product = datesProducts[0]; // Accede al primer objeto en el array
     const message = `Deseas confimar la creacion del siguiente producto?\n 
     Nombre Producto: 
@@ -211,16 +240,25 @@ export function AddProductsColletion() {
         tipo_producto: "",
         detalles: "",
         valor_mayor: 0,
-        valor_costos_fijos: 1000,
+        valor_costos_fijos:0,
         valor: 0,
         unidades_disponibles: 0,
+        publicar: false,
       },
     ]);
-    setProductImage(null);
+    setIsPublic(false)
+    setPercent(0)
+    setValorMayor(0)
+    setValor(0)
+    setProductImages([]);;
     setTypeProductList([]);
     setErrorMessage(false);
     setErrorParams(false);
+    setIsChecked(false)
+    setMessageSuggested([])
   };
+
+  
 
   return (
     <View style={styles.containerPrincipal}>
@@ -233,16 +271,17 @@ export function AddProductsColletion() {
       <View style={styles.containerHeader}>
         <Text style={styles.titleHeader}>Datos del Producto</Text>
       </View>
+      <View style={styles.viewContainerInfo}>
+          <Text style={{ color: "white", textAlign: "left" }}>
+            Todos los campos son obligatorios
+          </Text>
+      </View>
       <ScrollView>
         <View style={styles.containerInf}>
           <View
-            style={{
-              alignItems: "flex-start",
-              justifyContent: "flex-start",
-              width: width * 0.8,
-            }}
+            style={styles.viewTextInput}
           >
-            <Text>Nombre del Producto</Text>
+            <Text>Nombre del Producto*</Text>
           </View>
           <TextInput
             style={styles.inputInf}
@@ -252,79 +291,110 @@ export function AddProductsColletion() {
             }}
           />
           <View
-            style={{
-              alignItems: "flex-start",
-              justifyContent: "flex-start",
-              width: width * 0.8,
-            }}
+            style={styles.viewTextInput}
           >
-            <Text>Detalles</Text>
+            <Text>Detalles*</Text>
           </View>
           <TextInput
             value={datesProducts[0].detalles}
             onChangeText={(text) => addTolist("detalles", text)}
-            style={[styles.inputInf, { height: 100, textAlignVertical: 'top' }]}
+            style={[styles.inputInf, { height: 100, textAlignVertical: 'top' ,textTransform:"none"}]} // Ajusta el estilo para multiline
             multiline
           />
           <View
-            style={{
-              alignItems: "flex-start",
-              justifyContent: "flex-start",
-              width: width * 0.8,
-            }}
+            style={styles.viewTextInput}
           >
-            <Text>Valor por mayor</Text>
+            <Text>Valor por mayor*</Text>
           </View>
-          <View style={{ ...theme.viewTextInputIcon }}>
-            <TextInput
+          
+          <TextInput
               placeholder="$"
-              style={{ ...theme.textInputIcon }}
-              value={datesProducts[0].valor_mayor}
+              style={styles.inputInf}
+              value={valorMayor}
               keyboardType="numeric"
               onChangeText={(text) => {
-                addTolist("valor_mayor", text);
+                setIsChecked(false)
+                addTolist('valor_costos_fijos',0)
+                addTolist("valor_mayor", cleanNumber(text) );
+                setValorMayor(formatToCOP(text))
                 setMessageSuggested([]);
                 setErrorParams(false);
                 setErrorMessage(false);
                 isNum(text);
               }}
-            />
-            <Pressable
-              style={{ ...theme.pressableInputIcon }}
-              onPressIn={() => {
-                handleRequest("SRP");
-              }}
-            >
-              <Text style={styles.TextPressables}>
-                {iconInfo({ size: 19 })}
-              </Text>
-            </Pressable>
-          </View>
-          {errorParams && (
-            <View>
-              <Text>{errorParams}.</Text>
-              <Link style={{ color: 'blue', textDecorationLine: 'underline' }}  href="/myStoreSettings/costsMyStoreDrawer">Configurar Costos...</Link>
-            </View>
-          )}
-          {messageSuggested && (
-            <View>
-              {Object.values(messageSuggested).map((value, index) => (
-                <Text key={index}>
-                  {index == 0
-                    ? `Valor Sugerido: ${pesosFormat(value)}`
-                    : index == 2
-                      ? `% ganacia: ${value * 100}%`
-                      : `Valor con CFs: ${pesosFormat(value)}`}
+          />
+          <View style={styles.priceSuggestionBox}>
+              <Text style={styles.sectionTitle}>📈 Precio sugerido de venta</Text>
+               {!percent && (
+                <Text style={{ fontSize: 12, color: '#bbb', marginVertical: 4 }}>
+                  * Si no asignas un %, se usará el porcentaje configurado en los costos fijos.
                 </Text>
-              ))}
+              )}
+              <View style={styles.row}>
+                <TextInput
+                  placeholder="% ganancia"
+                  style={styles.percentInput}
+                  keyboardType="numeric"
+                  value={percent.toString()}
+                  onChangeText={(text) => setPercent(text)}
+                />
+                <Pressable
+                  onPress={() => handleRequest("SRP")}
+                  style={styles.calcButton}
+                >
+                  <Text style={styles.calcButtonText}>Calcular</Text>
+                </Pressable>
+              </View>
+             
+              <Text style={styles.helpText}>
+                Se calcula el precio sugerido sumando tus costos fijos y el porcentaje de ganancia.
+              </Text>
+              
+              {errorParams && (
+                <View style={styles.errorBox}>
+                  <Text style={styles.errorText}>{errorParams}</Text>
+                  <Link
+                    style={styles.linkText}
+                    href="/myStoreSettings/costsMyStoreDrawer"
+                  >
+                    Configurar costos fijos...
+                  </Link>
+                </View>
+              )}
+
+              {messageSuggested && Object.keys(messageSuggested).length > 0 && (
+                <View style={styles.resultBox}>
+                  <Text style={styles.resultText}>
+                    💰 Precio sugerido de venta: {pesosFormat(messageSuggested.Precio_sugerido_Unidad)}
+                  </Text>
+                  <Text style={styles.resultText}>
+                    🧮 Valor con CFs: {pesosFormat(messageSuggested.ValorXmayor_CF
+                  )}
+                  </Text>
+                  <Text style={styles.resultText}>
+                    📊 Ganancia estimada: {Math.round(messageSuggested.Margen * 100)}%
+                  </Text>
+
+                  <View style={styles.switchRow}>
+                    <Text style={{ color: "#fff" }}>¿Agregar CFs al producto?</Text>
+                    <Switch
+                      value={isChecked}
+                      onValueChange={(newValue) => {
+                        setIsChecked(newValue);
+                        let valorConCFs =
+                          messageSuggested.ValorXmayor_CF - datesProducts[0].valor_mayor;
+                        const valorRedondeado = parseFloat(valorConCFs.toFixed(2));
+                        addTolist("valor_costos_fijos", newValue ? valorRedondeado : 0);
+                      }}
+                    />
+                  </View>
+                </View>
+              )}
             </View>
-          )}
+
+
           <View
-            style={{
-              alignItems: "flex-start",
-              justifyContent: "flex-start",
-              width: width * 0.8,
-            }}
+            style={styles.viewTextInput}
           >
             <View
               style={{
@@ -333,27 +403,22 @@ export function AddProductsColletion() {
                 width: width * 0.8,
               }}
             >
-              <Text>Valor </Text>
+              <Text>Valor*</Text>
             </View>
           </View>
           <TextInput
             placeholder="$"
             style={styles.inputInf}
-            value={datesProducts[0].valor}
+            value={valor}
             keyboardType="numeric"
             onChangeText={(text) => {
-              setErrorMessage(false);
-              addTolist("valor", text);
-              isNum(text);
+              addTolist("valor", cleanNumber(text) );
+              setValor(formatToCOP(text))
             }}
-            onBlur={() => pesosFormat(datesProducts[0].valor)}
+         
           />
           <View
-            style={{
-              alignItems: "flex-start",
-              justifyContent: "flex-start",
-              width: width * 0.8,
-            }}
+            style={styles.viewTextInput}
           >
             <View
               style={{
@@ -362,7 +427,7 @@ export function AddProductsColletion() {
                 width: width * 0.8,
               }}
             >
-              <Text>Unidades</Text>
+              <Text>Unidades*</Text>
             </View>
           </View>
           <TextInput
@@ -376,13 +441,9 @@ export function AddProductsColletion() {
             }}
           />
           <View
-            style={{
-              alignItems: "flex-start",
-              justifyContent: "flex-start",
-              width: width * 0.8,
-            }}
+            style={styles.viewTextInput}
           >
-            <Text>Tipo de producto</Text>
+            <Text>Tipo de producto*</Text>
           </View>
           <View style={{ ...theme.viewTextInputIcon }}>
             <TextInput
@@ -390,6 +451,8 @@ export function AddProductsColletion() {
               style={{ ...theme.textInputIcon }}
               value={typeProductList.tipo_producto}
             />
+
+            
             <Pressable
               style={{ ...theme.pressableInputIcon }}
               onPressOut={() => {
@@ -399,25 +462,41 @@ export function AddProductsColletion() {
             >
               {iconSearch({ size: 16 })}
             </Pressable>
+
+
+          </View>
+           <View
+            style={styles.viewTextInput}
+          >
+            <Text>Publicar*</Text>
+          <Switch 
+                  value={isPublic} 
+                  onValueChange={(newValue)=>{setIsPublic(newValue)
+                    if(newValue){
+                      addTolist('publicar',newValue)
+                    }else{
+                      addTolist('publicar',false)
+                    }
+                 }} />
           </View>
           {errorMessage && <Text style={{ color: "red" }}>{errorMessage}</Text>}
-          <ImagePickerWeb image={productImage} setImage={setProductImage} />
+          <ImagePickerWeb images={productImages} setImages={setProductImages} />
         </View>
         <View style={styles.containerPressable}>
-          <Pressable
+          <AnimatedButton
+            title="Crear Producto"
             style={styles.pressables}
+            textStyle={styles.TextPressables}
             onPress={() => setStateModalCreate(true)}
-          >
-            <Text style={styles.TextPressables}>Crear Producto</Text>
-          </Pressable>
-          <Pressable
+          />
+           <AnimatedButton
+            title="Limpiar Formulario"
             onPress={() => {
               clearForm();
             }}
             style={styles.pressables}
-          >
-            <Text style={styles.TextPressables}>Limpiar Formulario</Text>
-          </Pressable>
+            textStyle={styles.TextPressables}
+          />
         </View>
       </ScrollView>
       <ModalTypeProduct
@@ -437,65 +516,112 @@ export function AddProductsColletion() {
 }
 
 const styles = StyleSheet.create({
-  containerPrincipal: {
-    flex: 1,
-    margin: 10,
-    borderRadius: 30,
-    ...theme.backgroundColorPrincipal,
-  },
-  containerHeader: { margin: 10, marginEnd: 20, alignItems: "center" },
+  containerPrincipal: { flex: 1, padding: 10, ...theme.backgroundColorPrincipal },
+  containerHeader: { margin: 10, marginEnd: 20, alignItems: "flex-start" },
   titleHeader: { ...theme.textTitle },
-  containerInf: { margin: 10, alignItems: "center" },
-  inputInf: {
-    ...theme.textInputGlobal,
-    height: 40,
-    marginBottom: 10,
-    width: width * 0.8,
-    padding: 5, // Centra el texto dentro del TextInput
-    textTransform: "capitalize",
-  },
-  containerPressable: { alignItems: "center", margin: 20 },
-  pressables: { ...theme.pressable, margin: 5, width: 200 },
+  infoBox: { alignItems: "center", marginVertical: 10, padding: 10, borderRadius: 10, ...theme.pressableColor },
+  infoText: { color: "white", textAlign: "center" },
+  scrollForm: { paddingHorizontal: 20, paddingBottom: 30 },
+  label: { fontWeight: "bold", marginBottom: 5 },
+  inputInf: { ...theme.textInputGlobal, height: 45, borderRadius: 10, borderWidth: 1, borderColor: "#ccc", paddingHorizontal: 10, backgroundColor: "#fff" },
+  rowInput: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 10 },
+  percentInput: { width: 50, height: 40, borderWidth: 1, borderColor: '#ccc', borderRadius: 8, paddingHorizontal: 5 },
+  calcButton: { ...theme.pressable, width: '60%', marginRight: 10 },
+  linkText: { color: 'blue', textDecorationLine: 'underline' },
+  errorText: { color: 'red', marginTop: 10 },
+  containerPressable: { flexDirection: "row", justifyContent: "space-around", marginTop: 20 },
+  pressables: { ...theme.pressable, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10 },
   TextPressables: { ...theme.textPressable },
+  viewTextInput:{alignItems: "flex-start",justifyContent: "flex-start",width: width * 0.8,paddingTop:5},
+  priceSuggestionBox: {
+  backgroundColor: "#1e1e2f",
+  padding: 15,
+  borderRadius: 12,
+  marginVertical: 15,
+  borderColor: "#5e5ce6",
+  borderWidth: 1,
+},
 
-  //Modal Styles
-  modalcontainerPrincipal: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalViewPrincipalContainer: {
-    ...theme.backgroundColorPrincipal,
-    maxWidth: width * 0.8,
-    minWidth: width * 0.5,
-    height: height * 0.5,
-    borderRadius: 10,
-  },
-  modalHeaderContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    height: 50,
-    borderBottomWidth: 1,
-    borderColor: "#d0d0d0",
-  },
-  modalTextHeader: {
-    ...theme.textTitle,
-  },
-  modalFlatlistView: {
-    margin: 5,
-    padding: 2,
-    borderColor: "#d0d0d0",
-    borderWidth: 1,
-    borderRadius: 10,
-  },
-  modalFlatlistText: { textTransform: "capitalize" },
-  modalPressableClose: {
-    ...theme.pressableCancel,
-    padding: 10,
-  },
-  modalPressedClose: {
-    ...theme.pressedCancel,
-    padding: 10,
-  },
+sectionTitle: {
+  color: "#fff",
+  fontWeight: "bold",
+  fontSize: 16,
+  marginBottom: 10,
+},
+
+row: {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 10,
+  marginBottom: 10,
+},
+
+percentInput: {
+  width: 80,
+  height: 40,
+  backgroundColor: "#fff",
+  borderRadius: 8,
+  paddingHorizontal: 10,
+  color: "#000",
+},
+
+calcButton: {
+  backgroundColor: "#5e5ce6",
+  paddingVertical: 10,
+  paddingHorizontal: 20,
+  borderRadius: 8,
+},
+
+calcButtonText: {
+  color: "#fff",
+  fontWeight: "bold",
+  fontSize: 14,
+},
+
+helpText: {
+  color: "#bbb",
+  fontSize: 12,
+  marginBottom: 10,
+},
+
+errorBox: {
+  backgroundColor: "#2a2a2a",
+  padding: 10,
+  borderRadius: 8,
+  marginTop: 10,
+},
+
+errorText: {
+  color: "red",
+  fontSize: 13,
+  marginBottom: 5,
+},
+
+linkText: {
+  color: "#5e5ce6",
+  fontSize: 13,
+  textDecorationLine: "underline",
+},
+
+resultBox: {
+  marginTop: 10,
+  backgroundColor: "#2d2d3d",
+  padding: 10,
+  borderRadius: 8,
+},
+
+resultText: {
+  color: "#eee",
+  fontSize: 14,
+  marginVertical: 2,
+},
+
+switchRow: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginTop: 10,
+},
+
 });

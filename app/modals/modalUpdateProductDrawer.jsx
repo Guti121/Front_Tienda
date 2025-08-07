@@ -132,7 +132,7 @@ export default function ModalUpdateProductDrawer() {
         <View style={styles.unitsView}>
           {action == "decreased" && (
             <Text style={{ color: "red", ...theme.textTitle }}>
-              ¡Recuerda que estas en eliminar unidades!
+              ¡Recuerda que vas a eliminar unidades!
             </Text>
           )}
           <Text style={{ ...theme.textTitle }}>

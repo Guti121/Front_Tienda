@@ -73,6 +73,7 @@ export default function Bill() {
         setArrayProducts(null);
         setError("No se encontraron productos");
       } else {
+        
         setArrayProducts(request);
       }
     } catch (error) {
@@ -151,7 +152,8 @@ export default function Bill() {
         style={{
           flex: 1,
           backgroundColor: { ...theme.backgroundColorPrincipal },
-          padding:5
+          padding:5,
+          
         }}
       >
         {notification && (
@@ -198,8 +200,8 @@ export default function Bill() {
           data={arrayProducts}
           numColumns={2}
           renderItem={({ item }) => {  
-            const imageUri = item?.image?.trim()
-              ? item.image
+            const imageUri = item?.imagen_principal?.trim()
+              ? item.imagen_principal
               : "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
           return(
             
@@ -387,17 +389,18 @@ const styles = StyleSheet.create({
 
   containerFlatlist: {
     height: "100%",
-    width: '100%'
+    width: "100%"
     
   },
   containerProduct: {
     ...theme.shadow,
     alignItems:'center',
     justifyContent:'center',
-    margin: 10,
-    width:'50%',
+    margin: 5,
+    width:'49%',
     paddingHorizontal:10,
     paddingVertical:30,
+    borderRadius: 10,
 
     ...theme.backgroundColorPrincipal,
   },

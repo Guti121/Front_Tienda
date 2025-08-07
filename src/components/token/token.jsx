@@ -6,7 +6,7 @@ import { save } from "./localstorage";
 import { router } from "expo-router";
 
 const baseUrl = "https://api.mystockapp.site/";
-
+//https://api.mystockapp.site/
 //redirect Login
 export const deleteTokenStorage = async () => {
   await Storage.removeItem("time");
@@ -21,20 +21,22 @@ export const deleteTokenStorage = async () => {
 
 export async function expiredTimeToken() {
   try {
-    const [username, refresh, timeExpiration] = await Promise.all([
+    const [username, refresh, timeExpiration,user] = await Promise.all([
       Storage.getItem("username"),
       Storage.getItem("Refreshtoken"),
       Storage.getItem("tokenExpiration"),
+      Storage.getItem("user"),
+
     ]);
 
+    
     if (!refresh || !timeExpiration) {
       throw new Error("Faltan datos requeridos (tokenRefresh).");
     }
 
-    currentTime = Date.now();
-
+    const currentTime = Date.now();
     if (currentTime > parseInt(timeExpiration)) {
-      await refreshToken(refresh, username);
+      await refreshToken(refresh, username,user);
     }
   } catch (error) {
     throw new Error(
@@ -43,7 +45,7 @@ export async function expiredTimeToken() {
   }
 }
 
-async function refreshToken(refreshToken, username) {
+async function refreshToken(refreshToken, username,user) {
   const url = `${baseUrl}refresh-token/`;
   const data = { refresh: `${refreshToken}` };
   const headers = {
@@ -63,7 +65,7 @@ async function refreshToken(refreshToken, username) {
       const access = response.data.access;
       const refresh = response.data.refresh;
 
-      await save({ access, refresh, username });
+      await save({ access, refresh, username,user });
     }
   } catch (error) {
     throw error;

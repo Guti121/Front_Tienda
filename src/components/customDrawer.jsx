@@ -1,12 +1,28 @@
 import { DrawerContentScrollView, DrawerItem } from "@react-navigation/drawer";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { useRouter, useSegments } from "expo-router";
+import { useEffect } from "react";
+import { Keyboard } from "react-native";
+import theme from "./themeStyles/theme";
 
 const CustomDrawerContent = (props) => {
   const { user, allowedScreens, navigation } = props;
   const router = useRouter();
   const segments = useSegments();
   const currentScreen = segments[segments.length - 1]; // Obtiene la pantalla actual
+
+
+  useEffect(() => {
+  const unsubscribe = navigation?.addListener?.('drawerClose', () => {
+    if (typeof document !== 'undefined') {
+      document.activeElement?.blur();
+    }
+    Keyboard.dismiss();
+  });
+
+  return unsubscribe;
+}, [navigation]);
+
 
 
   return (
@@ -33,21 +49,22 @@ const CustomDrawerContent = (props) => {
       {/* 🔹 Elementos de navegación */}
       {allowedScreens.length > 0 ? (
         allowedScreens.map(({ name, title, icon }) => {
-          const isActive = currentScreen === name; // Comparar correctamente
+          const isActive = currentScreen === name // Comparar correctamente
+
           return (
             <DrawerItem
               key={name}
               label={title}
               onPress={() => navigation.navigate(name)}
-              icon={icon ? () => icon({ size: 30 }) : undefined}
+              icon={icon ? () => icon({ size: 20, color:"white" }) : undefined}
               style={{
                 borderRadius: 15,
-                backgroundColor: isActive ? "#454545" : "transparent", // Fondo activo
+                backgroundColor: isActive ? theme.colors.primary : "transparent", // Fondo activo
               }}
               labelStyle={{
                 fontSize: 16,
                 fontWeight: "bold",
-                color: isActive ? "#fafbfd" : "#333", // Color del texto activo
+                color: isActive ? "#fafbfd" : theme.colors.textSecundary, // Color del texto activo
               }}
             />
           );
@@ -57,13 +74,15 @@ const CustomDrawerContent = (props) => {
           key="index"
           label="Inicio"
           onPress={() => navigation.navigate(index)}
-          style={{
-            borderRadius: 15,
-          }}
-          labelStyle={{
-            fontSize: 16,
-            fontWeight: "bold",
-          }}
+           style={{
+                borderRadius: 15,
+                backgroundColor: "transparent", // Fondo activo
+              }}
+              labelStyle={{
+                fontSize: 16,
+                fontWeight: "bold",
+                color: "#fafbfd"  // Color del texto activo
+              }}
         />
       )}
     </DrawerContentScrollView>
@@ -77,20 +96,25 @@ const styles = StyleSheet.create({
   drawerContainer: {
     flex: 1,
     paddingVertical: 20,
+    backgroundColor: theme.colors.backgroundColor,
   },
   userInfoSection: {
     padding: 5,
     alignItems: "center",
     marginBottom: 20,
+    backgroundColor: theme.colors.backgroundColorSecondary,
+    borderColor: theme.colors.primary,
+    borderWidth: 1,
+    borderRadius: 10,
   },
   username: {
     textTransform: "capitalize",
     fontSize: 18,
     fontWeight: "bold",
-    color: "#333",
+    color: theme.colors.textPrimary,
   },
   userRole: {
     fontSize: 14,
-    color: "#666",
+    color: theme.colors.textSecundary,
   },
 });

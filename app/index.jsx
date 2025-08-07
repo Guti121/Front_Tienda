@@ -1,18 +1,19 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import Storage from "../src/components/token/localstorage";
 import { deleteTokenStorage } from "../src/components/token/token";
+import { useSelector } from "react-redux";
 
 export default function Index() {
   const router = useRouter();
+  const user = useSelector((state) => state.user.user);
 
   useFocusEffect(() => {
     const isAuthenticate = async () => {
       try {
         const myUsername = await Storage.getItem("username");
         const myToken = await Storage.getItem("token");
-        const user = await Storage.getItem("user");
         if (myUsername && myToken && user) {
-          router.replace("/drawer/"); // Redirige a la página principal si la autenticación es exitosa
+          router.replace("/drawer"); // Redirige a la página principal si la autenticación es exitosa
         } else {
           deleteTokenStorage();
           router.replace("/login"); // Redirige al login si no está autenticado

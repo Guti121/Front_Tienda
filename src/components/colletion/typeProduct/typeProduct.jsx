@@ -70,7 +70,6 @@ export default function TypeProductView() {
       if (response?.results?.length === 0) {
         setError("No hay resultados disponibles");
       }
-      console.log(response)
       const products = reset
         ? response.results
         : [...listProducts, ...response.results];
@@ -108,7 +107,6 @@ export default function TypeProductView() {
 
    
     }catch(error){
-      console.log(error)
     }
   }
 

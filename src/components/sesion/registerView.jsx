@@ -200,14 +200,14 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    ...theme.backgroundColorPrincipal,
+    backgroundColor:theme.colors.backgroundColor,
   },
   form: {
     flex: 1,
     width: Platform.OS === "web" ? 350 : width * 0.8,
     marginTop: 30,
     alignItems: "center",
-    backgroundColor: "#fafbfd",
+    backgroundColor: theme.colors.backgroundColor,
   },
   container: {
     padding: 20,

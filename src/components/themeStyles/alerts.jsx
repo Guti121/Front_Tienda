@@ -4,7 +4,7 @@ import { Modal, Text } from "react-native";
 
 const platform = Platform.OS;
 
-const Alerts = () => {
+export const Alerts = () => {
   error = "error";
   const [alertsModal, setAlertModal] = useState(true);
 
@@ -20,4 +20,13 @@ const Alerts = () => {
   }
 };
 
-export default Alerts;
+Alerts;
+
+export const showSessionAlert = (title, message, onConfirm) => {
+  if (Platform.OS === "web") {
+    window.alert(`${title}\n\n${message}`);
+    onConfirm();
+  } else {
+    Alert.alert(title, message, [{ text: "OK", onPress: onConfirm }]);
+  }
+};

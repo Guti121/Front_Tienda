@@ -144,8 +144,8 @@ export default function ProductView() {
       <View style={styles.viewBody}>
         <FlatList
           data={listProducts}
-          renderItem={({ item }) => {const imageUri = item?.image?.trim()
-              ? item.image
+          renderItem={({ item }) => {const imageUri = item?.imagen_principal?.trim()
+              ? item.imagen_principal
               : "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
               return(
             <Pressable

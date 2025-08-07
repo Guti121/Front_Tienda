@@ -3,9 +3,10 @@ import { iconLogout } from "../src/components/icons/icons";
 import theme from "../src/components/themeStyles/theme";
 import { handleLogout } from "../src/components/sesion/axiosRequest";
 import { useDispatch } from "react-redux";
+import { logout } from "../src/redux/userSlice";
+import { deleteTokenStorage } from "../src/components/token/token";
+import { showSessionAlert } from "../src/components/themeStyles/alerts";
 import { router } from "expo-router";
-import { logout, setUser } from "../src/redux/userSlice";
-import { persistor } from "../src/redux/store";
 
 export default function Profile() {
   const dispatch = useDispatch();
@@ -13,9 +14,13 @@ export default function Profile() {
     try {
       const response = await handleLogout();
       dispatch(logout());
-
-      //router.replace("/login");
+      deleteTokenStorage()
     } catch (error) {
+      showSessionAlert(
+              "Error",
+              "Tu sesión no se pudo cerrar.",
+              () => router.replace("/drawer")
+            );
     }
   };
   return (

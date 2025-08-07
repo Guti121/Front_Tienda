@@ -20,6 +20,15 @@ export default function ProductsLayout() {
           headerShown: true,
         }}
       />
+      <Stack.Screen
+        name="editProduct"
+        options={{
+          presentatio:"modal",
+          animation: "default",
+          title: "Editar Producto",
+          headerShown: true,
+        }}
+      />
     </Stack>
   );
 }

@@ -1,5 +1,4 @@
-import { FlatList, Pressable } from "react-native-gesture-handler";
-
+import { FlatList,Pressable } from "react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
@@ -54,7 +53,6 @@ export default function BillsGenerate() {
           number: inputValue,
         });
         setBills({ facturas: [request.data] });
-        console.log(bills);
         setError(false);
       } else {
         const request = await handleFilterBillsRequest({
@@ -62,7 +60,6 @@ export default function BillsGenerate() {
           selectedData,
         });
         setBills(request.data);
-        console.log(bills);
 
         setError(false);
       }
@@ -76,7 +73,6 @@ export default function BillsGenerate() {
   };
 
   const detailBills = (index) => {
-    console.log(index);
     router.push(`/billsGenerate/billsGenerateDetailDrawer?value=${index}`);
   };
   return (
@@ -201,7 +197,9 @@ const styles = StyleSheet.create({
   },
   containerCountsBills: {
     flexDirection: "row",
-    backgroundColor: "black",
+    backgroundColor: theme.colors.backgroundColorWarning,
+    borderColor: theme.colors.primary,
+    borderWidth: 1, 
   },
   textCountsBills: {
     ...theme.textNames,

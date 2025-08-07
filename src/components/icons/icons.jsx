@@ -14,7 +14,8 @@ export function iconMinus(color) {
   return <AntDesign name="minuscircleo" size={30} color={color || "black"} />;
 }
 
-export function iconCar(color, size) {
+export function 
+iconCar(color, size) {
   return (
     <FontAwesome
       name="shopping-basket"
@@ -155,4 +156,16 @@ export function iconQrCode({size,color}){
 
 export function iconImage({size,color}){
   return <FontAwesome name="file-image-o" size={size || 24} color={color || "black"} />
+}
+
+
+export function iconArrowRight ({size,color}){
+  return <AntDesign name="right" size={size || 24} color={color ||"black"} />}
+
+export function iconArrowLeft ({size,color}){
+  return <AntDesign name="left" size={size || 24} color={color ||"black"} />
+}
+
+export function iconArrowTop ({size,color}){
+  return <MaterialIcons name="arrow-drop-up" size={size || 24} color={color ||"black"}/>
 }

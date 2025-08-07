@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { useSelector } from "react-redux";
 import { useEffect, useState } from "react";
 import CustomDrawerContent from "../../src/components/customDrawer";
+import theme from "../../src/components/themeStyles/theme";
 
 // 🔥 Filtrar pantallas según el tipo de usuario
 export const getAllowedScreens = (user) => {
@@ -47,11 +48,23 @@ export const getAllowedScreens = (user) => {
       allowed: ["creator",'admin'],
     },
     {
+      name: "stocktaking",
+      title: "Inventario",
+      allowed: ["creator"],
+    },
+     {
+      name: "catalog",
+      title: "Catalogo",
+      allowed: ["creator", "admin", "worker"],
+    },
+    {
       name: "addToCompanyDrawer",
       title: "Qr Aliado",
       icon: iconQrCode,
       allowed: ["cliente"],
     },
+
+   
   ];
 
   const filteredScreens = screens.filter((screen) =>
@@ -81,10 +94,21 @@ export default function Layout() {
   return (
     <GestureHandlerRootView style={styles.container}>
       <Drawer
-        screenOptions={{
-          drawerContentStyle: styles.drawerContentStyles,
-          drawerLabelStyle: styles.drawerLabel,
-        }}
+          screenOptions={{
+            drawerContentStyle: styles.drawerContentStyles,
+            drawerLabelStyle: styles.drawerLabel,
+            drawerItemStyle: styles.drawerItemStyle,
+            drawerActiveTintColor: "#ffffff",
+            drawerActiveBackgroundColor: "#5e5ce6",
+            headerTintColor: theme.colors.textSecundary,
+            headerStyle: {
+              backgroundColor:theme.colors.backgroundColor, 
+              ...theme.shadow,
+              shadowColor: theme.colors.primary,
+
+            },
+          }}
+
         drawerContent={(props) => (
           <CustomDrawerContent
             {...props}
@@ -101,8 +125,9 @@ export default function Layout() {
               title: screen.title, // ✅ Título en la barra superior (Header)
               drawerLabel: screen.title, // ✅ Título en el Drawer
               drawerIcon: screen.icon
-                ? () => screen.icon({ size: 30 })
+                ? () => screen.icon({ size: 24 }) // ✅ Icono del Drawer
                 : undefined, // ✅ Icono opcional
+              
             }}
           />
         ))}
@@ -114,19 +139,26 @@ export default function Layout() {
 // Estilos
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#f8f9fa",
     flex: 1,
+    backgroundColor: "#ffffff", // fondo general
   },
   drawerContentStyles: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "#f0f0f0", // fondo del drawer
   },
   drawerLabel: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
+    fontSize: 17,
+    fontWeight: "600",
+    color: "#1e1e1e",
+  },
+  drawerItemStyle: {
+    borderRadius: 10,
+    marginVertical: 4,
   },
 });
+
+
+
 
 const screenStyleCustoms = () => ({
   drawerItemStyle: { borderRadius: 15 },

@@ -11,7 +11,7 @@ import { setUser } from "../src/redux/userSlice";
 // Recuperar usuario almacenado
 
 const LoadUser = () => {
-  const dispatch = useDispatch(); // 🔹 useDispatch debe estar aquí, fuera de funciones asíncronas
+  const dispatch = useDispatch(); // 
   const userRedux = useSelector((state) => state.user.user);
 
   useEffect(() => {
@@ -21,7 +21,7 @@ const LoadUser = () => {
 
         if (storedUser) {
           const parsedUser = JSON.parse(storedUser);
-          // 🔹 Solo actualizar Redux si el usuario es diferente al actual
+     
           if (
             !userRedux ||
             JSON.stringify(userRedux) !== JSON.stringify(parsedUser)
@@ -35,7 +35,7 @@ const LoadUser = () => {
     };
 
     loadU();
-  }, [dispatch, userRedux]); // Dependencia: solo se ejecuta si `userRedux` cambia
+  }, [dispatch, userRedux]); 
 
   return null;
 };
@@ -44,6 +44,7 @@ export default function RootLayout() {
   return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
+        
         <LoadUser />
         <Stack>
           {/* Pantalla principal de la aplicación */}
@@ -62,6 +63,11 @@ export default function RootLayout() {
             options={{ headerShown: false, title: "Bad" }}
           />
           <Stack.Screen
+            name="catalog"
+            options={{ presentation: "card", headerShown: false }}
+          />
+
+          <Stack.Screen
             name="profile"
             options={{ headerShown: true, title: " Mi Perfil" }}
           />
@@ -78,6 +84,8 @@ export default function RootLayout() {
             name="products"
             options={{ presentation: "card", headerShown: false }}
           />
+
+          
           <Stack.Screen
             name="myStoreSettings"
             options={{ presentation: "card", headerShown: false }}
@@ -85,6 +93,10 @@ export default function RootLayout() {
 
           <Stack.Screen
             name="billsGenerate"
+            options={{ presentation: "card", headerShown: false }}
+          />
+          <Stack.Screen
+            name="stockTaking"
             options={{ presentation: "card", headerShown: false }}
           />
         </Stack>

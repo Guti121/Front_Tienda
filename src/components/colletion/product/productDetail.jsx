@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Image,
+  Modal,
   Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableNativeFeedback,
   View,
 } from "react-native";
 import { handleBarCode, handleDeleteProduct, handleRetrieveProduct } from "../axiosRequest";
@@ -19,9 +21,18 @@ import { BarNotification } from "../../icons/barNotification";
 import { isWeb } from "../../token/localstorage";
 import html2pdf from 'html2pdf.js';
 import { useSelector } from "react-redux";
+import { Dimensions } from 'react-native';
+import ImageModal from "../../catalog/stylesCatalogo/modalImage";
+
 
 export default function DetailProduct({ id }) {
-  //hook product
+  const [selectedImage, setSelectedImage] = useState(null);
+  const screenWidth = Dimensions.get('window').width;
+    // Define un ancho base para las imágenes
+    const imageWidth = isWeb
+      ? Math.min(150, screenWidth / 6)  // para web, máximo 150px o divide la pantalla
+      : screenWidth / 4;      
+      //hook product
   const [product, setProduct] = useState([]);
   const [stateModalConfirm, setStateModalConfirm] = useState(false);
   const [stateBarNotification, setStateBarNotification] = useState(null);
@@ -36,7 +47,6 @@ export default function DetailProduct({ id }) {
 
   //user 
   const user = useSelector((state) => state.user.user);
-  console.log(user.typeUser)
   useFocusEffect(
     useCallback(() => {
       setError(false)
@@ -59,7 +69,6 @@ export default function DetailProduct({ id }) {
         if (query == "retrieve") {
           const request = await handleRetrieveProduct(id, token);
           setProduct(request.data);
-          console.log(request.data)
 
           const barcode =await handleBarCode(id,token);
           setBarCodeProduct(barcode.barcode)
@@ -102,9 +111,6 @@ export default function DetailProduct({ id }) {
               : "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
 
   
-  const imageUriProduct = product?.image
-              ? product.image
-              : "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
 
   //print codigo de barras 
   // Agrega este fragmento dentro de tu componente DetailProduct, después de const [selectedSize...]
@@ -251,14 +257,49 @@ const downloadBarcodePDF = async (size) => {
             <Text style={{ ...theme.textNames , fontSize: 20 }}>
               #{product.numero_producto}
             </Text>
+            <Text style={{ ...theme.textNames,color:theme.colors.primary, fontSize: 15 }}>
+              {product?.publicar === true ? "Publico" : "Privado" || "No especificado"}</Text>
           </View>
           <View style={styles.nameView}>
-           <Image
-                source={{ uri:imageUriProduct }}
-                  style={{ width:300, height: 350, resizeMode: "cover" }}
-              />
-            <Text numberOfLines={2} style={[styles.textName , {marginVertical:20}]}>{product.nombre}</Text>
+           
+              {product?.imagenes?.length > 0 && (
+                <View style={{ width: '100%', marginBottom: 10 }}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={true}
+                    style={{ width: '100%'}}
+                    contentContainerStyle={{
+                      paddingHorizontal: 10,
+                      flexDirection: 'row',
+                      alignItems: 'center' ,
+                      justifyContent:'center'
+                    }}
+                  >
+                    {product.imagenes?.map((img, index) => (
+                      <Pressable key={index} onPress={() => setSelectedImage(img.imagen)}>
+                        <Image
+                          source={{ uri: img.imagen }}
+                          style={{
+                            width: imageWidth,
+                            height: imageWidth * 1.3,
+                            borderRadius: 10,
+                            marginRight: 10,
+                            borderWidth: img.principal ? 2 : 1,
+                            borderColor: img.principal ? theme.colors.primary : "#ccc",
+                          }}
+                        />
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+
+            <Text numberOfLines={2} style={[styles.textName , {marginVertical:20}]}>
+              {product.nombre}
+            </Text>
+
           </View>
+
           <View style={{flexDirection:'row',width:'100%'}}>
 
            {user.typeUser === 'creator' && <View
@@ -274,11 +315,11 @@ const downloadBarcodePDF = async (size) => {
             <View
               style={{
                 width:'50%', 
-                backgroundColor: "rgb(225, 255, 191)",
+                backgroundColor:theme.colors.primary 
               }}
               >
-              <Text style={styles.textTitles}>Valor de venta</Text>
-              <Text style={{ ...styles.textDetail, fontSize: 15 }}>
+              <Text style={[styles.textTitles,{color:'white'}]}>Valor de venta</Text>
+              <Text style={{ ...styles.textDetail, fontSize: 15,color:'white' }}>
                 {pesosFormat(product.valor)}
               </Text>
             </View>
@@ -289,7 +330,7 @@ const downloadBarcodePDF = async (size) => {
                 width:'50%'
               }}
               >
-              <Text style={styles.textTitles}>Valor por mayor CostFijos</Text>
+              <Text style={styles.textTitles}>Valor de Costos Fijos</Text>
               <Text style={{ ...styles.textDetail, fontSize: 15 }}>
                 {pesosFormat(product.valor_costos_fijos)}
               </Text>
@@ -377,13 +418,19 @@ const downloadBarcodePDF = async (size) => {
           <View style={styles.nameView}>
             <Image
                   source={{ uri:imageUriBarcode }}
-                  style={{ width:300, height: 250, resizeMode: "cover" }}
+                  style={{ width:300, height: 150, resizeMode: "cover" }}
                   />
           <Pressable onPress={() => setShowPrintSizeModal(true)}>
             <Text style={{ color: 'green' }}>Descargar PDF</Text>
           </Pressable>
 
-          {showPrintSizeModal && (
+          
+            <Modal  visible={showPrintSizeModal}
+              transparent={true}
+              animationType="fade"
+              onRequestClose={() => setShowPrintSizeModal(false)}
+            >
+
             <View style={{
               position: 'absolute',
               top: 0,
@@ -420,7 +467,7 @@ const downloadBarcodePDF = async (size) => {
                 </View>
               </View>
             </View>
-          )}
+            </Modal>
 
           </View>
           
@@ -449,6 +496,17 @@ const downloadBarcodePDF = async (size) => {
           >
             {iconDelete(colorIconDelete)}
           </Pressable>
+          <Pressable
+            onPress={() =>
+              router.push({
+                pathname: "products/editProduct",
+                params: { product: JSON.stringify(product) },
+              })
+            }
+            style={{ paddingHorizontal: 30 }}
+          >
+            {iconEdit("blue")}
+          </Pressable>
         </View>
       </View>
       <ModalConfirm
@@ -457,6 +515,12 @@ const downloadBarcodePDF = async (size) => {
         handleIPositiveButton={() => handlesProduct("delete")}
         onClose={closeModalConfirm}
       />
+      <ImageModal
+        visible={!!selectedImage} 
+        imageUri={selectedImage}
+        onClose={() => setSelectedImage(null)}
+        />
+
     </SafeAreaView>
   );
 }
@@ -508,7 +572,7 @@ const styles = StyleSheet.create({
     margin: 5,
     fontSize:15
   },
-  textDetail: { textTransform: "capitalize", margin: 5, 
+  textDetail: {margin: 5, 
     ...theme.textNames,
     fontSize:15
 

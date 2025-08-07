@@ -1,9 +1,7 @@
 import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import { jwtDecode } from "jwt-decode";
-// importamos las libreria necesarias para utilizar el hook de redux
-import { useDispatch } from "react-redux";
-import { setUser } from "../../redux/userSlice";
+import { showSessionAlert } from "../themeStyles/alerts";
 
 export const isWeb = Platform.OS === "web";
 const keyUsername = "username";
@@ -23,11 +21,12 @@ export async function save({ access, refresh, username, user }) {
       await Promise.all([
         localStorage.setItem(keyAccessToken, access),
         localStorage.setItem(keyRefreshToken, refresh),
-        localStorage.setItem(keyUsername, username),
-        localStorage.setItem(keyUser, JSON.stringify(user)),
         localStorage.setItem(keyTokenExpiration, expirationTime.toString()), // Save expiration time
+        localStorage.setItem(keyUsername, username),
       ]);
-      
+      const safeUser = typeof user === 'string' ? user : JSON.stringify(user);
+      localStorage.setItem("keyUser", safeUser);
+
     } else {
       await Promise.all([
         SecureStore.setItemAsync(keyAccessToken, access),
@@ -39,7 +38,7 @@ export async function save({ access, refresh, username, user }) {
       
     }
   } catch (error) {
-    console.log("save Token ");
+    showSessionAlert('Error','Error token',()=>{})
   }
 }
 

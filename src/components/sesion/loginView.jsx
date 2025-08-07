@@ -17,6 +17,7 @@ import { deleteTokenStorage } from "../token/token";
 import { useDispatch } from "react-redux";
 import { setUser } from "../../redux/userSlice";
 import Storage from "../token/localstorage";
+import AnimatedButton from "../catalog/stylesCatalogo/buttonAnimate";
 
 export default function FormLogin() {
   //Estados de los input para el form
@@ -86,21 +87,13 @@ export default function FormLogin() {
             />
           </View>
           {error ? <Text style={theme.errorText}>{error}</Text> : null}
-          <Pressable
-            style={[
-              theme.pressable,
-              isPressed ? theme.pressed : null, // Aplica estilo adicional si está presionado
-            ]}
-            onPressIn={() => setIsPressed(true)} // Cambia el estado a verdadero cuando se presiona
-            onPressOut={() => {
-              setTimeout(() => {
-                setIsPressed(false);
-              }, 50);
-            }}
+          <AnimatedButton
+            title={"Iniciar Sesión"}
+            style={{...theme.button}}
+            textStyle={theme.textPressable}
             onPress={() => login()}
-          >
-            <Text style={theme.textPressable}>Iniciar sesion </Text>
-          </Pressable>
+          />
+           
         </View>
       </View>
     </View>
@@ -118,27 +111,13 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "flex-end",
-    ...theme.backgroundColorPrincipal,
+    backgroundColor:theme.colors.backgroundColor,
   },
   form: {
     flex: 1,
     marginTop: 30,
     alignItems: "center",
-    backgroundColor: "#fafbfd",
-  },
-  selectWindow: {
-    width: Platform.OS === "web" ? 350 : width * 0.8,
-    padding: 5,
-    borderWidth: 2,
-    borderRadius: 10,
-    borderColor: "#d0d0d0",
-    flexDirection: "row",
-    backgroundColor: "#fafbfd",
-    ...theme.shadow,
 
-    //alineamos los items internos
-
-    justifyContent: "center",
   },
   container: {
     padding: 20,
@@ -223,12 +202,6 @@ const styles = StyleSheet.create({
     height: 80, // Altura del círculo
     borderRadius: 100,
     resizeMode: "stretch",
-  },
-
-  selectWindowPressable: {
-    ...theme.pressable,
-    flex: 1,
-    marginHorizontal: 1,
   },
   textPressed: {
     ...theme.textPressable,

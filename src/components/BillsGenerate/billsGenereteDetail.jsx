@@ -64,7 +64,6 @@ export function BillGenerateDetail({ id }) {
       setError(String(error));
     }
   };
-
   const FlatlistData = () => {
     return error ? (
       <View>
@@ -126,7 +125,8 @@ export function BillGenerateDetail({ id }) {
   //View to print
 
   const generateHTML = () => {
-    const detallesHTML = response.detalles?.map((item, index) => `
+    const detallesHTML = response.detalles?.map((item, index) =>
+  `
       <tr>
         <td>${index + 1}</td>
         <td>${item.nombre_producto}</td>
@@ -139,7 +139,7 @@ export function BillGenerateDetail({ id }) {
     return `
       <html>
         <body>
-          <h2 style="text-align: center;">${response.tienda_nombre}</h1> 
+          <h2 style="text-align: center; text-transform: uppercase;">${response.tienda_nombre}</h1> 
           <h3 style="text-align: center;">Factura #${id}</h2>
           <p style="text-align: center;">Fecha: ${date} Hora: ${time}</p>
           <p style="text-align: center;">Vendedor: ${response.creado_por_full_name}</p>
@@ -189,7 +189,6 @@ export function BillGenerateDetail({ id }) {
   // const handleExportToPDF = async () => {
   //   const html = generateHTML();
   //   const { uri } = await Print.printToFileAsync({ html });
-  //   console.log("PDF saved to:", uri);
   //   // Optionally share it with expo-sharing
   // };
 
@@ -207,7 +206,7 @@ export function BillGenerateDetail({ id }) {
         <View style={styles.containerDate}>
           <Text style={{ ...theme.textTitle }}>Factura</Text>
           <Text>#{id}</Text>
-          <Text>{response.tienda_nombre}</Text>
+          <Text style={{textTransform:'uppercase'}}>{response.tienda_nombre}</Text>
           <Text>{response.creado_por_full_name}</Text>
 
           <Text>Fecha y hora</Text>

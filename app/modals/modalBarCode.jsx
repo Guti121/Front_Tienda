@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Text,
   View,
@@ -13,7 +13,7 @@ import { Camera, CameraView } from "expo-camera";
 import theme from "../../src/components/themeStyles/theme";
 import { filterCodeBar, filterCodeBarWeb } from "../../src/components/billing/axiosRequest";
 import { expiredGetToken } from "../../src/components/axios/generalAxiosRequest";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { deleteTokenStorage } from "../../src/components/token/token";
 import { checkIcon, iconCar } from "../../src/components/icons/icons";
 import { isWeb } from "../../src/components/token/localstorage";
@@ -42,14 +42,31 @@ export default function ModalBarCode() {
   //hook pressable BuscarProducto
   const [searchProduct, setSearchProduct] = useState(false);
   const [notification, setNotification] = useState(false);
-  useEffect(() => {
+
+ //hook para cam web
+ const [facingMode, setFacingMode] = useState("user");
+
+
+ useFocusEffect(
+  useCallback(() => {
+    let isActive = true;
+
     const getCameraPermissions = async () => {
       const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === "granted");
+      if (isActive) {
+        setHasPermission(status === 'granted');
+      }
     };
 
     getCameraPermissions();
-  }, []);
+
+    return () => {
+      isActive = false;
+      setHasPermission(false); // 👈 Aquí desactivas la cámara al salir
+    };
+  }, [])
+);
+
 
   //hacemos la consulta del codigo de barras
 
@@ -90,6 +107,12 @@ export default function ModalBarCode() {
     await handleFilter(data);
   };
   //isweb 
+
+  //control cam
+  const toggleCamera = () => {
+    setFacingMode((prev) => (prev === "user" ? "environment" : "user"));
+  };
+
 
   const capture = async () => {
     const imageSrc = webcamRef.current.getScreenshot(); // base64 string
@@ -177,12 +200,18 @@ export default function ModalBarCode() {
         audio={false}
         ref={webcamRef}
         screenshotFormat="image/jpeg"
+        videoConstraints={{ facingMode }}
+
         style={styles.video}
       />
-    
       </View>
       <Pressable style={styles.pressableContainer} onPress={capture}>
         <Text style={styles.textPressable}>Enviar Foto</Text>
+      </Pressable>
+      <Pressable onPress={toggleCamera} style={styles.pressableContainer}>
+        <Text style={styles.textPressable}>
+          Cambiar Cámara
+        </Text>
       </Pressable>
       </>
       :
@@ -230,7 +259,7 @@ function ModalProduct({ state, productoItem, onClose, setNotificationhook }) {
 
   const aggregateCar = () => {
     getArrayCar(
-      productoItem.producto,
+      productoItem.id,
       1,
       productoItem.valor,
       productoItem.nombre,
