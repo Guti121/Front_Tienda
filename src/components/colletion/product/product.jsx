@@ -1,281 +1,194 @@
+import { useEffect, useMemo, useState } from "react";
+import { FlatList, Image, Pressable, View } from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
+import { useInfiniteQuery } from "@tanstack/react-query";
+
+import { listProductsAdmin } from "../../../api/products";
+import { useTheme } from "../../../theme/ThemeProvider";
 import {
-  FlatList,
-  TextInput,
-  Pressable,
-  StyleSheet,
+  Badge,
+  Card,
+  EmptyState,
+  Icon,
+  Loader,
   Text,
-  View,
-  Image,
-} from "react-native";
-import theme, { width } from "../../themeStyles/theme";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { expiredGetToken } from "../../axios/generalAxiosRequest";
-import { router, useFocusEffect } from "expo-router";
-import { handleListProductFilterAdmin } from "../axiosRequest";
+  TextField,
+} from "../../../ui";
 import { pesosFormat } from "../../icons/functionFormat";
-import { iconFilter } from "../../icons/icons";
-import { useRoute } from "@react-navigation/native";
 
-//Vista para Listar los productos
+const FALLBACK_IMG =
+  "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
 
+// Listado de productos (vista admin). Paginado incremental con React Query.
 export default function ProductView() {
-  const [listProducts, setListProducts] = useState([]);
-  const [searchText, setSearchText] = useState("");
-  const [nextPage, setNextPage] = useState(null);
-  const debounceTimeoutRef = useRef(null);
-  //hooks filter
-  const route = useRoute();
-  const [filter, setFilter] = useState("");
-  //hook error
-  const [error, setError] = useState(false);
-  //iconFilter
-  const [stylePressableIconFilster, setStylePressableIconFilter] =
-    useState(false);
+  const params = useLocalSearchParams();
+  const order =
+    params?.returnedValue != null ? String(params.returnedValue) : "";
+  const { colors, spacing } = useTheme();
 
-  const handleChangeText = (text) => {
-    setSearchText(text);
+  const [query, setQuery] = useState("");
+  const [debounced, setDebounced] = useState("");
 
-    if (debounceTimeoutRef.current) {
-      clearTimeout(debounceTimeoutRef.current);
-    }
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(query.trim()), 400);
+    return () => clearTimeout(t);
+  }, [query]);
 
-    debounceTimeoutRef.current = setTimeout(() => {
-      resetAndFetchProducts(text);
-    }, 500);
-  };
+  const {
+    data,
+    isLoading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["products", "admin", debounced, order],
+    queryFn: ({ pageParam }) =>
+      listProductsAdmin({ q: debounced, order, page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, pages) =>
+      lastPage?.next ? pages.length + 1 : undefined,
+  });
 
-  const resetAndFetchProducts = async (filterText) => {
-    setNextPage(null)
-    await fetchProducts(filterText, null, true);
-  };
-
-  const fetchProducts = async (filterText,nextPage,reset = false) => {
-    try {
-      const token = await expiredGetToken();
-      if (!token) {
-        router.replace("/login");
-        return;
-      }
-
-      const response = await handleListProductFilterAdmin(
-        filterText,
-        token,
-        nextPage,
-        filter,
-      );
-      if (response?.results?.length === 0) {
-        setError("No hay resultados disponibles");
-      }
-
-      const products = reset
-        ? response.results
-        : [...listProducts, ...response.results];
-      setListProducts(products);
-      setNextPage(response.next); // Si `response.next` no es null, hay más páginas
-    } catch (error) {
-      setError(
-        String(error).length > 100
-          ? "Ocurrió un error inesperado. Inténtalo de nuevo."
-          : String(error), // Convertir a string en caso de que sea un objeto o número
-      );
-    }
-  };
-
-  const handleLoadMore = () => {
-    if (nextPage) {
-      fetchProducts(searchText, nextPage);
-    }
-  };
-
-  useFocusEffect(
-    useCallback(() => {
-      // Reiniciar estados al obtener el foco
-      setSearchText("");
-      setListProducts([]);
-      setNextPage(null);
-
-      if (route.params?.returnedValue) {
-        setFilter(route.params.returnedValue);
-        fetchProducts("", null);
-      } else {
-        // Llamar al API con los valores iniciales
-        fetchProducts("", null);
-      }
-      // Cleanup function para cuando el componente pierde el foco
-      return () => {
-        setSearchText("");
-        setListProducts([]);
-        setNextPage(null);
-        setError(false);
-      };
-    }, [filter]),
+  const items = useMemo(
+    () =>
+      (data?.pages ?? []).flatMap((p) =>
+        Array.isArray(p) ? p : (p?.results ?? []),
+      ),
+    [data],
   );
 
-  return (
-    <View style={{ flex: 1 }}>
-      <View style={styles.viewHeaderContainer}>
-        <Text style={styles.textHeader}>Almacén de Productos</Text>
-        <View style={styles.viewFilter}>
-          <TextInput
-            placeholder="Buscar Producto"
-            value={searchText}
-            onChangeText={(text) => {
-              setError(false);
-              handleChangeText(text);
-            }}
-            style={styles.inputTextStyle}
-          />
-          <Pressable
-            onPressIn={() => {
-              setStylePressableIconFilter(true);
-            }}
-            onPressOut={() => {
-              setStylePressableIconFilter(false),
-                router.push("modals/modalFilterProductIcon");
-            }}
-          >
-            {iconFilter({
-              color: stylePressableIconFilster && "#d0d0d0",
-            })}
-          </Pressable>
-        </View>
-        {error && <Text style={{ color: "red" }}>{error}</Text>}
-      </View>
-      <View style={styles.viewBody}>
-        <FlatList
-          data={listProducts}
-          renderItem={({ item }) => {const imageUri = item?.imagen_principal?.trim()
-              ? item.imagen_principal
-              : "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
-              return(
-            <Pressable
-              onPress={() => {
-                // Navega a la nueva página con el ID como parámetro
-                router.push({
-                  pathname: "/products/detailProduct",
-                  params: { id: item.id },
-                });
+  const renderItem = ({ item }) => {
+    const uri = item?.imagen_principal?.trim()
+      ? item.imagen_principal
+      : FALLBACK_IMG;
+    const agotado = !item.unidades_disponibles;
+    return (
+      <Pressable
+        onPress={() =>
+          router.push({
+            pathname: "/products/detailProduct",
+            params: { id: item.id },
+          })
+        }
+        style={{ marginBottom: spacing.sm }}
+      >
+        <Card level={1}>
+          <View style={{ flexDirection: "row", gap: spacing.md }}>
+            <Image
+              source={{ uri }}
+              style={{
+                width: 76,
+                height: 76,
+                borderRadius: 10,
+                resizeMode: "cover",
               }}
-              style={
-                item.unidades_disponibles != 0
-                  ? styles.viewContainerFlatlist
-                  : [
-                      styles.viewContainerFlatlist,
-                      { backgroundColor: "#ffdfd4" },
-                    ]
-              }
-            >
-              <Text  numberOfLines={1} style={styles.nameItemText}>{item.nombre}</Text>
-              <Image
-                source={{ uri:imageUri }}
-    
-                style={{ width:200, height: 250, resizeMode: "cover"}}
-              />
-              <View>
-                <View style={styles.viewBodyContainerFlatlist}>
-                  <View style={styles.viewDetailsFlatlist}>
-                    <Text style={styles.textDetails}>valor</Text>
-                    <Text style={styles.textItemsprops}>{pesosFormat(item.valor)}</Text>
-                  </View>
-                  
-                  <View style={styles.viewDetailsFlatlist}>
-                    <Text style={styles.textDetails}>unidades</Text>
-                    <Text style={styles.textItemsprops}>{item.unidades_disponibles}</Text>
-                  </View>
-                </View>
-                <View style={styles.viewDetailsFlatlist}>
-                    <Text style={styles.textDetails}>Detalles</Text>
-                    <Text
-                    numberOfLines={1}
-                    style={styles.textItemsprops}
-                    >{item.detalles}</Text>
-                  </View>
-              </View>
-              <Text style={{ ...theme.textNames }}>
-                #{item.numero_producto}
+            />
+            <View style={{ flex: 1, gap: spacing.xs }}>
+              <Text weight="medium" numberOfLines={1}>
+                {item.nombre}
               </Text>
-              {item.unidades_disponibles == 0 && (
-                <Text style={{ ...theme.textTitle, color: "red" }}>
-                  Agotado
+              <Text weight="bold" color="primary">
+                {pesosFormat(item.valor)}
+              </Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: spacing.sm,
+                  alignItems: "center",
+                }}
+              >
+                {agotado ? (
+                  <Badge label="Agotado" tone="danger" />
+                ) : (
+                  <Badge
+                    label={`${item.unidades_disponibles} u.`}
+                    tone={item.unidades_disponibles > 3 ? "success" : "warning"}
+                  />
+                )}
+                <Text variant="caption" muted>
+                  #{item.numero_producto}
                 </Text>
-              )}
-              
-            </Pressable>
-          )}}
-          keyExtractor={(item) => item.id.toString()}
-          onEndReached={handleLoadMore} // Detecta el final del scroll
-          onEndReachedThreshold={0.5} // Umbral para disparar la carga de más datos
-        />
+              </View>
+            </View>
+            <Icon name="chevron-right" size={20} color={colors.textFaint} />
+          </View>
+        </Card>
+      </Pressable>
+    );
+  };
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <View
+        style={{
+          flexDirection: "row",
+          gap: spacing.sm,
+          padding: spacing.lg,
+          paddingBottom: spacing.sm,
+        }}
+      >
+        <View style={{ flex: 1 }}>
+          <TextField
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Buscar producto"
+            left={<Icon name="magnify" size={20} color={colors.textMuted} />}
+          />
+        </View>
+        <Pressable
+          onPress={() => router.push("/modals/modalFilterProductIcon")}
+          style={{
+            width: 46,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: order ? colors.primary : colors.border,
+            backgroundColor: order ? colors.primarySoft : colors.surface,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Icon
+            name="tune-variant"
+            size={20}
+            color={order ? colors.primary : colors.textMuted}
+          />
+        </Pressable>
       </View>
+
+      {isLoading ? (
+        <Loader />
+      ) : (
+        <FlatList
+          data={items}
+          keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={{
+            paddingHorizontal: spacing.lg,
+            paddingBottom: spacing.xl,
+          }}
+          onEndReached={() => hasNextPage && fetchNextPage()}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={
+            isFetchingNextPage ? <Loader fill={false} /> : null
+          }
+          ListEmptyComponent={
+            <View style={{ paddingVertical: spacing.xxl }}>
+              <EmptyState
+                icon={isError ? "alert-circle-outline" : "package-variant"}
+                title={isError ? "No se pudo cargar" : "Sin productos"}
+                message={
+                  isError
+                    ? "Revisa tu conexión e inténtalo de nuevo."
+                    : debounced
+                      ? "Prueba con otro nombre."
+                      : "Aún no hay productos en el almacén."
+                }
+              />
+            </View>
+          }
+          renderItem={renderItem}
+        />
+      )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  viewHeaderContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-
-    borderBottomWidth: 1,
-    ...theme.borderColorInput,
-    padding: 5,
-    marginHorizontal: 10, // Ajuste en márgenes
-  },
-  viewFilter: {
-    justifyContent: "center",
-    alignItems: "center",
-    height: 35,
-    padding: 2,
-    width: width * 0.9,
-    flexDirection: "row",
-  },
-  textHeader: { ...theme.textTitle },
-  viewBody: {
-    flex: 1, // Permitir que el cuerpo ocupe el espacio restante
-    marginHorizontal: 10,
-  },
-  //flatlist styles
-  viewContainerFlatlist: {
-    backgroundColor: "white",
-    ...theme.shadow,
-    padding: 5,
-    margin: 5,
-  },
-  nameItemText: {
-    margin:5,
-    ...theme.textTitle,
-    textTransform: "capitalize",
-  },
-  viewBodyContainerFlatlist: {
-    flex: 1,
-
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  viewDetailsFlatlist: {
-    padding:5,
-    justifyContent: "center",
-    alignItems: "center",
-    borderBottomWidth: 1,
-    ...theme.borderColorInput,
-    flex: 1,
-  },
-  textDetails: {
-    textTransform: "capitalize",
-    fontSize:15
-  },
-  textItemsprops:{
-    textTransform: "capitalize",
-    ...theme.textNames,
-    fontSize:15,
-
-  },
-  inputTextStyle: {
-    ...theme.textInputGlobal,
-    height: 30,
-    width: width * 0.8,
-    padding: 5, // Centra el texto dentro del TextInput
-    textTransform: "capitalize",
-  },
-});

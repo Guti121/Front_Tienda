@@ -1,590 +1,336 @@
-import { useCallback, useEffect, useState } from "react";
-import {
-  Image,
-  Modal,
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableNativeFeedback,
-  View,
-} from "react-native";
-import { handleBarCode, handleDeleteProduct, handleRetrieveProduct } from "../axiosRequest";
-import { Link, router, useFocusEffect } from "expo-router";
-import { expiredGetToken } from "../../axios/generalAxiosRequest";
-import theme, { height, width } from "../../themeStyles/theme";
-import { pesosFormat } from "../../icons/functionFormat";
-import { iconDelete, iconEdit, iconMinus, iconPlus } from "../../icons/icons";
-import { ModalConfirm } from "../../icons/modalConfirm";
-import { BarNotification } from "../../icons/barNotification";
-import { isWeb } from "../../token/localstorage";
-import html2pdf from 'html2pdf.js';
+import { useState } from "react";
+import { Image, Pressable, ScrollView, View } from "react-native";
+import { router } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
 import { useSelector } from "react-redux";
-import { Dimensions } from 'react-native';
+
+import {
+  retrieveProduct,
+  getBarcode,
+  deleteProduct,
+} from "../../../api/products";
+import {
+  downloadBarcodePdf,
+  SIZE_OPTIONS,
+} from "../../../features/products/barcodePdf";
+import { useTheme } from "../../../theme/ThemeProvider";
+import {
+  Badge,
+  Button,
+  Card,
+  Divider,
+  Icon,
+  Loader,
+  Screen,
+  Sheet,
+  Text,
+  useToast,
+} from "../../../ui";
+import { pesosFormat } from "../../icons/functionFormat";
+import { isWeb } from "../../token/localstorage";
 import ImageModal from "../../catalog/stylesCatalogo/modalImage";
 
+const FALLBACK_IMG =
+  "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
+
+function Row({ label, value, strong }) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingVertical: 6,
+      }}
+    >
+      <Text muted>{label}</Text>
+      <Text
+        weight={strong ? "bold" : "medium"}
+        color={strong ? "primary" : "text"}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
 
 export default function DetailProduct({ id }) {
-  const [selectedImage, setSelectedImage] = useState(null);
-  const screenWidth = Dimensions.get('window').width;
-  // Define un ancho base para las imágenes
-  const imageWidth = isWeb
-    ? Math.min(150, screenWidth / 6)  // para web, máximo 150px o divide la pantalla
-    : screenWidth / 4;
-  //hook product
-  const [product, setProduct] = useState([]);
-  const [stateModalConfirm, setStateModalConfirm] = useState(false);
-  const [stateBarNotification, setStateBarNotification] = useState(null);
-  const [barcodeProduct, setBarCodeProduct] = useState(null)
-  const [error, setError] = useState(false)
-  //hook Pressable
-
-  //colors
-  const [colorIconDelete, setColorIconDelete] = useState("red");
-  const [colorIconMinus, setColorIconMinus] = useState("red");
-  const [colorIconPlus, setColorIconPlus] = useState("black");
-
-  //user 
+  const { colors, spacing } = useTheme();
+  const toast = useToast();
   const user = useSelector((state) => state.user.user);
-  useFocusEffect(
-    useCallback(() => {
-      setError(false)
-      handlesProduct();
-      // Función de limpieza
-      return () => {
-        setProduct([]);
-      };
-    }, []), // Dependencias vacías para que solo se ejecute al enfocar la pantalla
-  );
+  const isCreator = user?.typeUser === "creator";
 
-  const handlesProduct = async (query = "retrieve") => {
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [pdfSheet, setPdfSheet] = useState(false);
+
+  const {
+    data: product,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["product", id],
+    queryFn: () => retrieveProduct(id),
+    enabled: !!id,
+  });
+
+  const { data: barcode } = useQuery({
+    queryKey: ["product", id, "barcode"],
+    queryFn: () => getBarcode(id),
+    enabled: !!id,
+  });
+
+  const barcodeUrl = barcode?.barcode || FALLBACK_IMG;
+
+  const onDelete = async () => {
+    setDeleting(true);
     try {
-      const token = await expiredGetToken();
-      if (!token) {
-        router.replace("/login");
-        return;
-      }
-      try {
-        if (query == "retrieve") {
-          const request = await handleRetrieveProduct(id, token);
-          setProduct(request.data);
-
-          const barcode = await handleBarCode(id, token);
-          setBarCodeProduct(barcode.barcode)
-        }
-        if (query === "delete") {
-          console.log("hola")
-          await handleDeleteProduct({ id, token });
-          barNotificationfunction(
-            iconDelete("black"),
-            "Producto Eliminado con Exito",
-            "red",
-          );
-          setTimeout(() => {
-            router.back();
-          }, 3000);
-        }
-      } catch (error) {
-        setError(true)
-      }
-    } catch {
-      router.replace("/login");
-    }
-  };
-  //-----------------------------------Modals --------------------------
-  //------------------------ modalConfirm
-  //funcion para cerrar el modal confirm
-  const closeModalConfirm = () => {
-    setStateModalConfirm(false);
-  };
-
-  //-------------------------Bar Notifications ----------------------------
-
-  const barNotificationfunction = (icon, message, color) => {
-    setStateBarNotification({ icon, message, color });
-    setTimeout(() => setStateBarNotification(null), 3000);
-  };
-
-  //Variable para renderizar imagen  
-  const imageUriBarcode = barcodeProduct
-    ? barcodeProduct
-    : "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
-
-
-
-  //print codigo de barras 
-  // Agrega este fragmento dentro de tu componente DetailProduct, después de const [selectedSize...]
-  // Hooks
-  const [showPrintSizeModal, setShowPrintSizeModal] = useState(false);
-  const [selectedSize, setSelectedSize] = useState("80");
-
-  const sizeOptions = ["58", "80", "100"];
-
-  const sizeConfig = {
-    "58": {
-      width: 58,
-      height: 35,
-      titleSize: 9,
-      priceSize: 9,
-      barcodeWidth: "50mm"
-    },
-    "80": {
-      width: 80,
-      height: 40,
-      titleSize: 10,
-      priceSize: 9,
-      barcodeWidth: "70mm"
-    },
-    "100": {
-      width: 100,
-      height: 45,
-      titleSize: 12,
-      priceSize: 10,
-      barcodeWidth: "85mm"
+      await deleteProduct(id);
+      setConfirmDelete(false);
+      toast.success("Producto eliminado");
+      setTimeout(() => router.back(), 600);
+    } catch (err) {
+      setConfirmDelete(false);
+      toast.error(err?.message || "No se pudo eliminar el producto");
+    } finally {
+      setDeleting(false);
     }
   };
 
-  const convertImageToBase64 = async (imageUrl) => {
-    const response = await fetch(`${imageUrl}?t=${new Date().getTime()}`, {
-      mode: 'cors',
-      cache: 'no-store'
+  const goEditStock = (event) =>
+    router.push({
+      pathname: "/modals/modalUpdateProductDrawer",
+      params: { product: JSON.stringify(product), event },
     });
-    const blob = await response.blob();
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.readAsDataURL(blob);
-    });
-  };
-  const generateHTML = (size = "80", base64Image = "", barcodeNumber = "") => {
-    const config = sizeConfig[size] || sizeConfig["80"];
 
-    return `
-    <div style="
-      width: ${config.width}mm;
-      height: ${config.height}mm;
-      font-family: Arial, sans-serif;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      text-align: left;
-      padding: 2mm;
-      box-sizing: border-box;
-    ">
-      <div style="
-        font-size: ${config.titleSize}pt;
-        text-transform: uppercase;
-        word-wrap: break-word;
-        white-space: normal;
-        overflow-wrap: break-word;
-        max-width: 100%;
-        font-weight: bold;
-      ">${product.nombre}</div>
-      <div style="
-        font-size: ${config.priceSize}pt;
-        font-weight: bold;
-        margin-bottom: 1mm;
-      ">${pesosFormat(product.valor)}</div>
-      <img src="${base64Image}" alt="barcode" style="
-        width: ${config.barcodeWidth};
-        max-height: 18mm;
-        object-fit: contain;
-        padding: 2mm;
-        margin-bottom: 0.5mm;
-      "/>
-      <div style="
-        font-size: 10pt;
-        font-family: 'OCR A', monospace;
-        letter-spacing: 0.5px;
-        word-break: break-all;
-      ">${barcodeNumber}</div>
-    </div>
-  `;
-  };
-
-  const downloadBarcodePDF = async (size) => {
-    if (!product || !product.nombre || !product.valor) {
-      alert("El producto no está cargado correctamente.");
-      return;
+  const onPickPdfSize = async (size) => {
+    setPdfSheet(false);
+    try {
+      await downloadBarcodePdf({ size, barcodeImageUrl: barcodeUrl, product });
+    } catch (err) {
+      toast.error(err?.message || "No se pudo generar el PDF");
     }
-
-    const config = sizeConfig[size] || sizeConfig["80"];
-    const base64Image = await convertImageToBase64(imageUriBarcode);
-    const htmlContent = generateHTML(size, base64Image, product.codigo_barras || "");
-
-    const container = document.createElement('div');
-    container.innerHTML = htmlContent;
-    document.body.appendChild(container);
-
-    html2pdf()
-      .from(container)
-      .set({
-        margin: 0,
-        filename: `${product.nombre || 'codigo-de-barras'}.pdf`,
-        html2canvas: { scale: 2 },
-        jsPDF: {
-          unit: 'mm',
-          format: [config.height, config.width],
-          orientation: 'landscape'
-        }
-      })
-      .save()
-      .then(() => {
-        document.body.removeChild(container);
-      });
   };
 
+  if (isLoading) return <Loader label="Cargando producto…" />;
+  if (isError || !product) {
+    return (
+      <Screen>
+        <Text color="danger" center>
+          No se encontró el producto.
+        </Text>
+      </Screen>
+    );
+  }
 
+  const imgs = product.imagenes ?? [];
 
   return (
-    <SafeAreaView style={{ flex: 1, justifyContent: "center" }}>
-      {error && <Text style={{ color: 'red' }}>Error Producto no encontrado</Text>}
-      <View style={styles.principalView}>
-        {stateBarNotification && (
-          <BarNotification
-            icon={stateBarNotification.icon}
-            message={stateBarNotification.message}
-            color={stateBarNotification.color}
-          />
-        )}
-        <ScrollView
-          style={{
-            flex: 1,
-          }}
-        >
-          <View style={styles.containerNumeroProducto}>
-            <Text style={{ ...theme.textNames, fontSize: 20 }}>
-              #{product.numero_producto}
-            </Text>
-            <Text style={{ ...theme.textNames, color: theme.colors.primary, fontSize: 15 }}>
-              {product?.publicar === true ? "Publico" : "Privado" || "No especificado"}</Text>
-          </View>
-          <View style={styles.nameView}>
-
-            {product?.imagenes?.length > 0 && (
-              <View style={{ width: '100%', marginBottom: 10 }}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={true}
-                  style={{ width: '100%' }}
-                  contentContainerStyle={{
-                    paddingHorizontal: 10,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                >
-                  {product.imagenes?.map((img, index) => (
-                    <Pressable key={index} onPress={() => setSelectedImage(img.imagen)}>
-                      <Image
-                        source={{ uri: img.imagen }}
-                        style={{
-                          width: imageWidth,
-                          height: imageWidth * 1.3,
-                          borderRadius: 10,
-                          marginRight: 10,
-                          borderWidth: img.principal ? 2 : 1,
-                          borderColor: img.principal ? theme.colors.primary : "#ccc",
-                        }}
-                      />
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-
-            <Text numberOfLines={2} style={[styles.textName, { marginVertical: 20 }]}>
-              {product.nombre}
-            </Text>
-
-          </View>
-
-          <View style={{ flexDirection: 'row', width: '100%' }}>
-
-            {user.typeUser === 'creator' && <View
-              style={{
-                width: '50%'
-              }}
-            >
-              <Text style={styles.textTitles}>Valor por mayor</Text>
-              <Text style={{ ...styles.textDetail, fontSize: 15 }}>
-                {pesosFormat(product.valor_mayor)}
-              </Text>
-            </View>}
-            <View
-              style={{
-                width: '50%',
-                backgroundColor: theme.colors.primary
-              }}
-            >
-              <Text style={[styles.textTitles, { color: 'white' }]}>Valor de venta</Text>
-              <Text style={{ ...styles.textDetail, fontSize: 15, color: 'white' }}>
-                {pesosFormat(product.valor)}
-              </Text>
-            </View>
-
-          </View>
-          {user.typeUser === 'creator' && <View
-            style={{
-              width: '50%'
-            }}
-          >
-            <Text style={styles.textTitles}>Valor de Costos Fijos</Text>
-            <Text style={{ ...styles.textDetail, fontSize: 15 }}>
-              {pesosFormat(product.valor_costos_fijos)}
-            </Text>
-          </View>}
-          <View style={styles.containerDetailsView}>
-            <View style={styles.containerDetails}>
-              <Text style={styles.textTitles}>Tipo de Producto</Text>
-              <Text style={styles.textDetail}>{product.tipo_producto}</Text>
-            </View>
-
-            <View style={styles.containerDetails}>
-              <Text style={styles.textTitles}>Unidades Disponibles</Text>
-              <View
-                style={{
-                  width: "100%",
-                  height: "auto",
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderWidth: 1,
-                  padding: 10,
-                  borderRadius: 20,
-                  ...theme.borderColorInput,
-                }}
-              >
-                <Pressable
-                  style={styles.pressableIconsUnits}
-                  onPressIn={() => {
-                    setColorIconMinus("black");
-                    setTimeout(() => {
-                      setColorIconMinus("red"), 500;
-                    });
-                  }}
-                  onPressOut={() => {
-                    router.push({
-                      pathname: "modals/modalUpdateProductDrawer",
-                      params: {
-                        product: JSON.stringify(product),
-                        event: "decreased",
-                      },
-                    });
-                  }}
-                >
-                  {iconMinus(colorIconMinus)}
-                  <Text>Disminuir</Text>
-                </Pressable>
-                <Text
-                  style={[
-                    styles.textDetail,
-                    { width: "33%", textAlign: "center" },
-                  ]}
-                >
-                  {product.unidades_disponibles}
-                </Text>
-                <Pressable
-                  style={styles.pressableIconsUnits}
-                  onPressIn={() => {
-                    setColorIconPlus("#a6acaf");
-                    setTimeout(() => {
-                      setColorIconPlus("black"), 1000;
-                    });
-                  }}
-                  onPressOut={() => {
-                    router.push({
-                      pathname: "modals/modalUpdateProductDrawer",
-                      params: {
-                        product: JSON.stringify(product),
-                        event: "agg",
-                      },
-                    });
-                  }}
-                >
-                  {iconPlus(colorIconPlus)}
-                  <Text>Aumentar</Text>
-                </Pressable>
-              </View>
-
-            </View>
-            <View style={styles.containerDetails}>
-              <Text style={styles.textTitles}>Detalles</Text>
-              <Text style={styles.textDetail}>{product.detalles}</Text>
-            </View>
-          </View>
-
-          <View style={styles.nameView}>
-            <Image
-              source={{ uri: imageUriBarcode }}
-              style={{ width: 300, height: 150, resizeMode: "cover" }}
-            />
-            <Pressable onPress={() => setShowPrintSizeModal(true)}>
-              <Text style={{ color: 'green' }}>Descargar PDF</Text>
-            </Pressable>
-
-
-            <Modal visible={showPrintSizeModal}
-              transparent={true}
-              animationType="fade"
-              onRequestClose={() => setShowPrintSizeModal(false)}
-            >
-
-              <View style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                backgroundColor: 'rgba(0,0,0,0.5)',
-                justifyContent: 'center',
-                alignItems: 'center',
-                zIndex: 100,
-              }}>
-                <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 10, width: 250 }}>
-                  <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 10 }}>Seleccione el tamaño</Text>
-                  {sizeOptions.map((size) => (
-                    <Pressable key={size} onPress={() => setSelectedSize(size)}>
-                      <Text style={{
-                        padding: 10,
-                        backgroundColor: selectedSize === size ? '#ccc' : '#eee',
-                        marginBottom: 5,
-                        textAlign: 'center'
-                      }}>{size} mm</Text>
-                    </Pressable>
-                  ))}
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 10 }}>
-                    <Pressable onPress={() => setShowPrintSizeModal(false)}>
-                      <Text style={{ color: 'red' }}>Cancelar</Text>
-                    </Pressable>
-                    <Pressable onPress={() => {
-                      setShowPrintSizeModal(false);
-                      isWeb ? downloadBarcodePDF(selectedSize) : handlePrint(selectedSize);
-                    }}>
-                      <Text style={{ color: 'green' }}>Descargar</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              </View>
-            </Modal>
-
-          </View>
-
-        </ScrollView>
+    <Screen scroll>
+      <View style={{ gap: spacing.md }}>
         <View
           style={{
-            height: 50,
-            borderRadius: 30,
-            width: "100%",
-            backgroundColor: "rgba(255, 255, 255, 0.9)",
-            bottom: 0,
-
             flexDirection: "row",
+            justifyContent: "space-between",
             alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 5,
           }}
         >
-          <Pressable
-            onPressIn={() => {
-              setColorIconDelete("black"),
-                setTimeout(() => setColorIconDelete("red"), 100);
-            }}
-            onPressOut={() => setStateModalConfirm(true)}
-            style={{ paddingHorizontal: 30 }}
-          >
-            {iconDelete(colorIconDelete)}
-          </Pressable>
-          <Pressable
+          <Text variant="caption" muted>
+            #{product.numero_producto}
+          </Text>
+          <Badge
+            label={product.publicar ? "Público" : "Privado"}
+            tone={product.publicar ? "success" : "neutral"}
+          />
+        </View>
+
+        {imgs.length > 0 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={{ flexDirection: "row", gap: spacing.sm }}>
+              {imgs.map((img, i) => (
+                <Pressable key={i} onPress={() => setSelectedImage(img.imagen)}>
+                  <Image
+                    source={{ uri: img.imagen }}
+                    style={{
+                      width: 120,
+                      height: 150,
+                      borderRadius: 12,
+                      borderWidth: img.principal ? 2 : 1,
+                      borderColor: img.principal
+                        ? colors.primary
+                        : colors.border,
+                    }}
+                  />
+                </Pressable>
+              ))}
+            </View>
+          </ScrollView>
+        ) : null}
+
+        <Text variant="title" weight="bold">
+          {product.nombre}
+        </Text>
+
+        <Card level={1}>
+          <Row
+            label="Valor de venta"
+            value={pesosFormat(product.valor)}
+            strong
+          />
+          {isCreator ? (
+            <>
+              <Divider />
+              <Row
+                label="Valor por mayor"
+                value={pesosFormat(product.valor_mayor)}
+              />
+              <Row
+                label="Costos fijos"
+                value={pesosFormat(product.valor_costos_fijos)}
+              />
+            </>
+          ) : null}
+          <Divider />
+          <Row label="Tipo" value={product.tipo_producto || "—"} />
+          <Row
+            label="Unidades disponibles"
+            value={String(product.unidades_disponibles)}
+            strong
+          />
+        </Card>
+
+        <View style={{ flexDirection: "row", gap: spacing.md }}>
+          <Button
+            title="Ingresar"
+            variant="secondary"
+            style={{ flex: 1 }}
+            left={<Icon name="plus" size={18} color={colors.text} />}
+            onPress={() => goEditStock("agg")}
+          />
+          <Button
+            title="Retirar"
+            variant="secondary"
+            style={{ flex: 1 }}
+            left={<Icon name="minus" size={18} color={colors.text} />}
+            onPress={() => goEditStock("decreased")}
+          />
+        </View>
+
+        {product.detalles ? (
+          <Card level={0}>
+            <Text
+              variant="small"
+              weight="bold"
+              muted
+              style={{ marginBottom: 4 }}
+            >
+              DETALLES
+            </Text>
+            <Text>{product.detalles}</Text>
+          </Card>
+        ) : null}
+
+        <Card level={0} style={{ alignItems: "center", gap: spacing.sm }}>
+          <Image
+            source={{ uri: barcodeUrl }}
+            style={{ width: 260, height: 120, resizeMode: "contain" }}
+          />
+          {isWeb ? (
+            <Button
+              title="Descargar PDF"
+              variant="ghost"
+              fullWidth={false}
+              left={
+                <Icon name="file-pdf-box" size={18} color={colors.primary} />
+              }
+              onPress={() => setPdfSheet(true)}
+            />
+          ) : null}
+        </Card>
+
+        <View
+          style={{
+            flexDirection: "row",
+            gap: spacing.md,
+            marginTop: spacing.sm,
+          }}
+        >
+          <Button
+            title="Eliminar"
+            variant="danger"
+            style={{ flex: 1 }}
+            left={
+              <Icon
+                name="trash-can-outline"
+                size={18}
+                color={colors.textOnBrand}
+              />
+            }
+            onPress={() => setConfirmDelete(true)}
+          />
+          <Button
+            title="Editar"
+            style={{ flex: 2 }}
+            left={
+              <Icon
+                name="pencil-outline"
+                size={18}
+                color={colors.textOnBrand}
+              />
+            }
             onPress={() =>
               router.push({
-                pathname: "products/editProduct",
+                pathname: "/products/editProduct",
                 params: { product: JSON.stringify(product) },
               })
             }
-            style={{ paddingHorizontal: 30 }}
-          >
-            {iconEdit("blue")}
-          </Pressable>
+          />
         </View>
       </View>
-      <ModalConfirm
-        state={stateModalConfirm}
-        message={"Deseas Eliminar el Producto ?"}
-        handleIPositiveButton={() => handlesProduct("delete")}
-        onClose={closeModalConfirm}
-      />
+
+      <Sheet
+        visible={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        title="Eliminar producto"
+      >
+        <Text muted>
+          ¿Seguro que quieres eliminar “{product.nombre}”? Esta acción no se
+          puede deshacer.
+        </Text>
+        <Button
+          title="Sí, eliminar"
+          variant="danger"
+          loading={deleting}
+          onPress={onDelete}
+        />
+        <Button
+          title="Cancelar"
+          variant="secondary"
+          onPress={() => setConfirmDelete(false)}
+        />
+      </Sheet>
+
+      <Sheet
+        visible={pdfSheet}
+        onClose={() => setPdfSheet(false)}
+        title="Tamaño de la etiqueta"
+      >
+        {SIZE_OPTIONS.map((size) => (
+          <Button
+            key={size}
+            title={`${size} mm`}
+            variant="secondary"
+            onPress={() => onPickPdfSize(size)}
+          />
+        ))}
+      </Sheet>
+
       <ImageModal
         visible={!!selectedImage}
         imageUri={selectedImage}
         onClose={() => setSelectedImage(null)}
       />
-
-    </SafeAreaView>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  principalView: {
-    height: height * 0.8,
-    margin: 5,
-    padding: 10,
-    backgroundColor: "white",
-    ...theme.shadow,
-  },
-  containerNumeroProducto: {
-    alignItems: "flex-end",
-    height: 40,
-    justifyContent: "center",
-    padding: 5,
-  },
-  nameView: {
-    paddingHorizontal: 10,
-    width: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-    ...theme.borderColorInput,
-  },
-  textName: {
-    textAlign: 'center',
-    ...theme.textTitle,
-    textTransform: 'uppercase',
-    margin: 1,
-  },
-  containerDetailsView: {
-    flex: 1,
-    padding: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  containerDetails: {
-    borderBottomWidth: 1,
-    ...theme.borderColorInput,
-    padding: 5,
-    width: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  textTitles: {
-    textTransform: "uppercase",
-    ...theme.textTitle,
-    margin: 5,
-    fontSize: 15
-  },
-  textDetail: {
-    margin: 5,
-    ...theme.textNames,
-    fontSize: 15
-
-  },
-
-  pressableIconsUnits: {
-    paddingHorizontal: 8,
-    width: "33%",
-    justifyContent: "center",
-    alignItems: "center",
-
-  },
-});

@@ -37,6 +37,20 @@ export async function patchProduct(id, body) {
   return data;
 }
 
+// PATCH con multipart (cuando hay imágenes nuevas). axios pone el boundary.
+export async function patchProductForm(id, formData) {
+  const { data } = await api.patch(`updateProduct/${id}/`, formData);
+  return data;
+}
+
+// PATCH solo del stock. `unidades` es el nuevo total absoluto.
+export async function updateStock(id, unidades) {
+  const { data } = await api.patch(`updateProduct/${id}/`, {
+    unidades_disponibles: unidades,
+  });
+  return data;
+}
+
 export async function getBarcode(productId) {
   const { data } = await api.get(`facturas/api/barcode/${productId}/`);
   return data;

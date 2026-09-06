@@ -1,83 +1,64 @@
-import {
-  StyleSheet,
-  Text,
-  View,
-  Pressable,
-  Platform,
-  SafeAreaView,
-} from "react-native";
-import theme, { height, width } from "../../src/components/themeStyles/theme";
 import { useState } from "react";
+import { Pressable, View } from "react-native";
+
 import ProductView from "../../src/components/colletion/product/product";
 import TypeProductView from "../../src/components/colletion/typeProduct/typeProduct";
 import { useUserCAAuthRedirect } from "../../src/redux/viewsPermissions";
+import { useTheme } from "../../src/theme/ThemeProvider";
+import { Text } from "../../src/ui";
 
-// En esta vista se renderizan las dos opciones , producto y tipo de producto
+const TABS = [
+  ["product", "Productos"],
+  ["type", "Tipos"],
+];
 
+// Cambia entre el listado de productos y el de tipos de producto.
 export default function ProductsDrawer() {
-  //hook bottoms
-  const [pressedBottomProducts, setPressedBottomProducts] = useState(true);
   useUserCAAuthRedirect();
-  return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <View style={{ flex: 1, ...theme.backgroundColorPrincipal }}>
-        <View style={{ alignItems: "center" }}>
-          <View style={styles.viewContainer}>
-            <Pressable
-              style={[
-                styles.pressableBottomHeader,
-                pressedBottomProducts && theme.pressed,
-              ]}
-              onPress={() => setPressedBottomProducts(true)}
-            >
-              <Text style={{ color: "white" }}>Producto</Text>
-            </Pressable>
+  const { colors, spacing, radii } = useTheme();
+  const [tab, setTab] = useState("product");
 
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <View
+        style={{
+          flexDirection: "row",
+          gap: spacing.xs,
+          margin: spacing.lg,
+          marginBottom: spacing.sm,
+          padding: spacing.xxs,
+          backgroundColor: colors.surfaceAlt,
+          borderRadius: radii.md,
+        }}
+      >
+        {TABS.map(([key, label]) => {
+          const active = tab === key;
+          return (
             <Pressable
-              style={[
-                styles.pressableBottomHeader,
-                !pressedBottomProducts && theme.pressed,
-              ]}
-              onPress={() => setPressedBottomProducts(false)}
+              key={key}
+              onPress={() => setTab(key)}
+              style={{
+                flex: 1,
+                paddingVertical: spacing.sm,
+                borderRadius: radii.sm,
+                alignItems: "center",
+                backgroundColor: active ? colors.surface : "transparent",
+              }}
             >
-              <Text style={{ color: "white" }}>Tipo de producto</Text>
+              <Text
+                weight={active ? "bold" : "regular"}
+                color={active ? "text" : "textMuted"}
+              >
+                {label}
+              </Text>
             </Pressable>
-          </View>
-        </View>
-        <View
-          style={{
-            flex: 1,
-            // Ajusta el tamaño al contenedor padre
-          }}
-        >
-          {pressedBottomProducts ? <ProductView /> : <TypeProductView />}
-        </View>
+          );
+        })}
       </View>
-    </SafeAreaView>
+
+      <View style={{ flex: 1 }}>
+        {tab === "product" ? <ProductView /> : <TypeProductView />}
+      </View>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  //style HeaderBottoms
-  viewContainer: {
-    width: Platform.OS === "web" ? '60%' : '90%',
-    padding: 5,
-    borderWidth: 2,
-    borderRadius: 10,
-    borderColor: "#d0d0d0",
-    flexDirection: "row",
-    backgroundColor: "#fafbfd",
-    ...theme.shadow,
-
-    //alineamos los items internos
-
-    justifyContent: "center",
-  },
-  pressableBottomHeader: {
-    ...theme.pressable,
-    flex: 1,
-    alignItems:'center',
-    justifyContent:'center',
-    marginHorizontal: 1,
-  },
-});

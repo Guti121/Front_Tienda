@@ -11,4 +11,5 @@ export { Icon } from "./Icon";
 export { ListItem } from "./ListItem";
 export { Sheet } from "./Sheet";
 export { Stepper } from "./Stepper";
+export { Toggle } from "./Toggle";
 export { ToastProvider, useToast } from "./Toast";

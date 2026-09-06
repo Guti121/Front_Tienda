@@ -1,184 +1,147 @@
-import { useLocalSearchParams, router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { Image, ScrollView, View } from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
+
+import { patchProduct, patchProductForm } from "../../src/api/products";
 import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  ScrollView,
-  Image,
-  Platform
-} from "react-native";
-import * as ImagePicker from "expo-image-picker";
-import { expiredGetToken } from "../../src/components/axios/generalAxiosRequest";
-import { handlePatchProduct } from "../../src/components/colletion/axiosRequest";
-import theme from "../../src/components/themeStyles/theme";
-import { cleanNumber, formatToCOP } from "../../src/components/icons/functionFormat";
+  cleanNumber,
+  formatToCOP,
+} from "../../src/components/icons/functionFormat";
 import ImagePickerWeb from "../../src/components/colletion/componentWebimage";
-import { isWeb } from "../../src/components/token/localstorage";
-import { asCalendarConsumer } from "react-native-calendars";
+import { useTheme } from "../../src/theme/ThemeProvider";
+import {
+  Button,
+  Card,
+  Screen,
+  Text,
+  TextField,
+  Toggle,
+  useToast,
+} from "../../src/ui";
 
-export default function ModalEditProductDrawer() {
+// Construye el FormData con las imágenes nuevas (web: File; nativo: {uri,...}).
+function appendImages(formData, images) {
+  images.forEach((img, i) => {
+    if (img?.file instanceof File) {
+      formData.append("imagenes", img.file);
+    } else if (img?.uri) {
+      const ext = img.uri.split(".").pop();
+      formData.append("imagenes", {
+        uri: img.uri,
+        name: `image_${i}.${ext}`,
+        type: `image/${ext}`,
+      });
+    }
+  });
+}
+
+export default function EditProduct() {
   const { product } = useLocalSearchParams();
-  const parsedProduct = JSON.parse(product);
-  const valorProduct = Number.isInteger(+parsedProduct.valor) ? +parsedProduct.valor : 0;
-  
-  const [valor, setValor] = useState(formatToCOP(String(valorProduct)));
+  const parsed = JSON.parse(product || "{}");
+  const { spacing } = useTheme();
+  const toast = useToast();
+  const queryClient = useQueryClient();
 
-  const [nombre, setNombre] = useState(parsedProduct.nombre || "");
-  const [detalles, setDetalles] = useState(parsedProduct.detalles || "");
-  const [publicar, setPublicar] = useState(Boolean(parsedProduct.publicar));
-  const [productImages, setProductImages] = useState([]);
+  const [nombre, setNombre] = useState(parsed.nombre || "");
+  const [valor, setValor] = useState(formatToCOP(String(parsed.valor ?? "")));
+  const [detalles, setDetalles] = useState(parsed.detalles || "");
+  const [publicar, setPublicar] = useState(Boolean(parsed.publicar));
+  const [images, setImages] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
 
-
-  const handleSave = async () => {
-  try {
+  const save = async () => {
     const numericValor = cleanNumber(valor);
-
-    if (!numericValor || parseInt(numericValor) === 0) {
-      alert("El valor del producto no puede ser 0.");
+    if (!numericValor) {
+      setError("El valor del producto no puede ser 0.");
       return;
     }
-
-    const token = await expiredGetToken();
-    const formData = new FormData();
-    formData.append("nombre", nombre);
-    formData.append("valor", numericValor);
-    formData.append("detalles", detalles);
-    formData.append("publicar", publicar);
-
-   
-    if (productImages?.length > 0) {
-        productImages.forEach((img, index) => {
-          if (img?.file instanceof File) {
-            // Web o navegador móvil
-            formData.append("imagenes", img.file);
-            const { name, type, size } = img.file;
-            alert(`Nombre: ${name}\nTipo: ${type}\nTamaño: ${size} bytes`);
-          } else if (img?.uri) {
-            alert(img?.uri)
-            // Solo para apps móviles (Expo nativo)
-            const uriParts = img.uri.split(".");
-            const fileType = uriParts[uriParts.length - 1];
-
-            formData.append("imagenes", {
-              uri: img.uri,
-              name: `image_${index}.${fileType}`,
-              type: `image/${fileType}`,
-            });
-          }
+    setError(null);
+    setSaving(true);
+    try {
+      if (images.length > 0) {
+        const fd = new FormData();
+        fd.append("nombre", nombre);
+        fd.append("valor", numericValor);
+        fd.append("detalles", detalles);
+        fd.append("publicar", publicar);
+        appendImages(fd, images);
+        await patchProductForm(parsed.id, fd);
+      } else {
+        await patchProduct(parsed.id, {
+          nombre,
+          valor: numericValor,
+          detalles,
+          publicar,
         });
       }
-
-
-    const response = await handlePatchProduct(parsedProduct.id, formData, token);
-    router.back();
-  } catch (e) {
-    alert("Error al actualizar el producto:", e.error || e.message || e);
-  }
-
-};
-
-
+      await queryClient.invalidateQueries({ queryKey: ["product"] });
+      await queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Producto actualizado");
+      router.back();
+    } catch (err) {
+      setError(err?.message || "No se pudo actualizar el producto.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <ScrollView style={{ flex: 1, padding: 20 }}>
-      <Text style={{ fontSize: 20, fontWeight: "bold" }}>Editar Producto</Text>
-      
-      <Text style={{ marginTop: 10 }}>Nombre</Text>
-      <TextInput
-        value={nombre}
-        onChangeText={setNombre}
-        style={{
-          borderBottomWidth: 1,
-          borderColor: "#ccc",
-          marginBottom: 15,
-          padding: 5,
-        }}
-      />
+    <Screen scroll>
+      <View style={{ gap: spacing.lg }}>
+        <TextField label="Nombre" value={nombre} onChangeText={setNombre} />
+        <TextField
+          label="Valor de venta"
+          value={valor}
+          onChangeText={(t) => setValor(formatToCOP(t))}
+          keyboardType="numeric"
+        />
+        <TextField
+          label="Detalles"
+          value={detalles}
+          onChangeText={setDetalles}
+          multiline
+          numberOfLines={4}
+          inputStyle={{ minHeight: 90, textAlignVertical: "top" }}
+        />
 
-      <Text>Valor</Text>
-      <TextInput
-        value={valor}
-        onChangeText={(text) => {
-          setValor(formatToCOP(text));
-        }}
-        keyboardType="numeric"
-        style={{
-          borderBottomWidth: 1,
-          borderColor: "#ccc",
-          marginBottom: 15,
-          padding: 5,
-        }}
-      />
-
-
-      <Text>Detalles</Text>
-      <TextInput
-        value={detalles}
-        onChangeText={setDetalles}
-        multiline
-        numberOfLines={4}
-        style={{
-          borderWidth: 1,
-          borderColor: "#ccc",
-          padding: 10,
-          marginBottom: 20,
-          textAlignVertical: "top",
-        }}
-      />
-
-      {/* Switch publicar */}
-      <View style={{ flexDirection: "row", alignItems: "center", marginVertical: 10 }}>
-        <Text style={{ marginRight: 10 }}>¿Publicar?</Text>
-        <Pressable
-          onPress={() => setPublicar((prev) => !prev)}
-          style={{
-            width: 50,
-            height: 30,
-            borderRadius: 15,
-            backgroundColor: publicar ? "#5e5ce6" : "gray",
-            justifyContent: "center",
-          }}
-        >
-          <View
-            style={{
-              width: 25,
-              height: 25,
-              borderRadius: 12.5,
-              backgroundColor: "white",
-              marginLeft: publicar ? 22 : 2,
-            }}
+        <Card level={0}>
+          <Toggle
+            label="Publicar en el catálogo"
+            value={publicar}
+            onValueChange={setPublicar}
           />
-        </Pressable>
+        </Card>
+
+        <View style={{ gap: spacing.sm }}>
+          <Text variant="small" weight="medium" muted>
+            Imágenes nuevas (reemplazan las actuales)
+          </Text>
+          {images.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={{ flexDirection: "row", gap: spacing.sm }}>
+                {images.map((img, i) => (
+                  <Image
+                    key={i}
+                    source={{ uri: img.uri }}
+                    style={{ width: 92, height: 92, borderRadius: 10 }}
+                  />
+                ))}
+              </View>
+            </ScrollView>
+          ) : null}
+          <ImagePickerWeb images={images} setImages={setImages} />
+        </View>
+
+        {error ? (
+          <Text color="danger" variant="small">
+            {error}
+          </Text>
+        ) : null}
+
+        <Button title="Guardar cambios" onPress={save} loading={saving} />
       </View>
-
-      {/* 📸 Vista previa imágenes */}
-      <ScrollView horizontal style={{ marginBottom: 15 }}>
-        {productImages.map((img, i) => (
-          <Image
-            key={i}
-            source={{ uri: img.uri }}
-            style={{ width: 100, height: 100, marginRight: 10, borderRadius: 10 }}
-          />
-        ))}
-      </ScrollView>
-      <ImagePickerWeb images={productImages} setImages={setProductImages} />
-        
-     
-
-      {/* Guardar */}
-      <Pressable
-        onPress={handleSave}
-        style={{
-          backgroundColor: theme.colors.primary,
-          padding: 12,
-          borderRadius: 8,
-          alignItems: "center",
-        }}
-      >
-        <Text style={{ color: "white", fontWeight: "bold" }}>Guardar Cambios</Text>
-      </Pressable>
-    </ScrollView>
+    </Screen>
   );
 }

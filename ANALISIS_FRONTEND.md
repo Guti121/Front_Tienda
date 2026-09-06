@@ -341,11 +341,43 @@ web` OK + eslint limpio.
 - Nota: `src/components/billing/axiosRequest.jsx` sigue vivo (lo usa
   `modalBarCode.jsx`); se borra cuando se rediseñe el escáner.
 
+**Incremento 4 (2026-09-06)** — Productos (lista / detalle / editar / stock).
+Verificado: `expo export --platform web` OK + eslint limpio.
+- [x] **`src/api/products.js`**: + `patchProductForm(id, fd)` (PATCH multipart),
+      `updateStock(id, unidades)`.
+- [x] **`src/features/products/barcodePdf.js`** (nuevo): `downloadBarcodePdf`
+      (+ `SIZE_OPTIONS`). Solo web; `html2pdf.js` con `import()` diferido (ya no
+      se importa estáticamente en nativo). Saca ~120 líneas de `productDetail`.
+- [x] **`src/components/colletion/product/product.jsx`** reescrito (281→~195)
+      sobre `src/ui/` + **`useInfiniteQuery`** (scroll infinito real, debounce
+      400ms). Filas `Card` con imagen/precio/`Badge` de stock. Filtro (`order`
+      0–5) desde `modalFilterProductIcon` vía `useLocalSearchParams`.
+- [x] **`src/components/colletion/product/productDetail.jsx`** reescrito
+      (590→~290) sobre `src/ui/` + `useQuery` (producto + barcode). Galería,
+      valores (mayor/costos solo `creator`), stock con botones Ingresar/Retirar
+      → `modalUpdateProductDrawer`. Eliminar en `Sheet` de confirmación +
+      `toast`. PDF en `Sheet` de tamaños (solo web). Quita el bug de `handlePrint`
+      indefinido.
+- [x] **`app/products/editProduct.jsx`** reescrito sobre `src/ui/`: `TextField`s,
+      `Toggle` publicar, `ImagePickerWeb` (sin tocar), sin `alert()` de debug.
+      PATCH JSON si no hay imágenes nuevas, multipart si las hay. Invalida
+      `["product"]` y `["products"]` en React Query.
+- [x] **`app/modals/modalUpdateProductDrawer.jsx`** reescrito (~280→~135) sobre
+      `src/ui/` + `Stepper`. Calcula el nuevo total, confirma en `Sheet`, llama
+      `updateStock`. Corrige los bugs de `parseInt(typeof ...)`.
+- [x] **`app/drawer/productsDrawer.jsx`**: segmented control (Productos/Tipos)
+      con tokens. `typeProduct.jsx` sigue con el estilo viejo (fuera de alcance).
+- [x] **`src/ui/Toggle.jsx`** (nuevo) + barrel.
+- Nota: `product/modalUpdateProduct.jsx` (stub "Hello") y `product/viewBarCode.jsx`
+  quedan huérfanos; se borran en el incremento de limpieza.
+
 **Pendiente del incremento:**
-- [ ] Resto de pantallas sobre `src/ui/` + React Query: productos
-      (lista/alta/detalle/editar), inventario, catálogo público, ajustes de
-      tienda, perfil, QR aliado, **escáner de código de barras** (`modalBarCode`,
-      quitar `react-webcam` → `expo-camera`/`expo-image-picker`).
+- [ ] **Alta de producto** (`addProductsColletion.jsx`, 651 líneas + subida de
+      imágenes web/móvil) sobre `src/ui/` + React Query.
+- [ ] Resto de pantallas sobre `src/ui/` + React Query: **tipos de producto**,
+      inventario, catálogo público, ajustes de tienda, perfil, QR aliado,
+      **escáner de código de barras** (`modalBarCode`, quitar `react-webcam` →
+      `expo-camera`/`expo-image-picker`).
 - [ ] Romper el resto de componentes de 400–650 líneas + hooks
       (`useProductSearch`).
 - [ ] Al migrar todo: borrar `react-native-vector-icons` + `icons.jsx`,
