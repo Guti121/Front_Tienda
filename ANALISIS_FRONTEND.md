@@ -257,17 +257,29 @@ eso y aporta caché, refetch, y loading/error unificados.
 - [ ] **RTK Query / @tanstack/react-query**: diferido a Fase 3 (reescribe el
       fetching de cada pantalla).
 
-### Fase 2 — Sistema de diseño (base del rediseño)
-- [ ] **`src/theme/tokens.js`**: `colors` (escala neutra + de marca + semánticos
-      success/warning/danger), `spacing` (escala 4-pt), `radii`, `typography`
-      (escala + pesos), `shadows` (con equivalente `boxShadow` web). **Modo claro +
-      oscuro** con `useColorScheme` y un `<ThemeProvider>`.
-- [ ] **`src/ui/`**: `Screen`, `Text` (variants), `Button` (variant/size/loading),
-      `TextField`, `Card`, `Badge`, `EmptyState`, `Loader`, `Sheet`/`Dialog`,
-      `ListItem`. Todos consumen tokens.
-- [ ] Iconos → `@expo/vector-icons`; borrar `react-native-vector-icons` y reducir
-      `icons.jsx` a un mapa de nombres.
-- [ ] `Alert` → componente `Dialog`/`Toast` que funcione en web y móvil.
+### Fase 2 — Sistema de diseño  · **HECHA (2026-09-06)**  ·  verificado con `expo export --platform web` (bundle OK) + eslint limpio
+- [x] **`src/theme/tokens.js`**: paleta (marca **índigo** `#4f46e5`, acento **teal**,
+      neutros slate, semánticos), temas **`light` + `dark`**, escalas `spacing`
+      (4-pt), `radii`, `typography` (size/weight/lineHeight), `shadow(level)` con
+      `boxShadow` para web + `shadow*/elevation` para nativo.
+- [x] **`src/theme/ThemeProvider.jsx`**: `<ThemeProvider>` + `useTheme()`, sigue
+      `useColorScheme()` (`mode: "system" | "light" | "dark"`, con `setMode`).
+- [x] **`src/ui/`** (todos consumen `useTheme()`): `Text` (variants + color/muted/
+      weight), `Button` (primary/secondary/ghost/danger · sm/md/lg · loading),
+      `TextField` (label/error/helper/adornos), `Card` (level 0–3), `Screen`
+      (SafeArea + fondo + scroll opc.), `Badge` (tones), `Loader`, `EmptyState`,
+      `Divider`, `Icon` (wrapper de `@expo/vector-icons`). Barrel en `src/ui/index.js`.
+- [x] **`Toast`** (`ToastProvider` + `useToast()` → `.success/.error/.info/.show`):
+      reemplaza `Alert` (que en web funciona mal). Montado en `app/_layout.jsx`.
+- [x] `@expo/vector-icons` añadido a `dependencies` (ya venía con Expo).
+- [x] `ThemeProvider` + `ToastProvider` conectados en `app/_layout.jsx` (envuelven
+      el `<Stack>`; las pantallas actuales no los consumen todavía → sin cambios
+      de comportamiento).
+- [ ] Pendiente (Fase 3): borrar `react-native-vector-icons` + el `icons.jsx`
+      propio cuando las pantallas migren a `<Icon>`; cargar la fuente **Inter**
+      con `expo-font` y ponerla en `typography.family`.
+- [ ] Pendiente: migrar el `theme.jsx` viejo → las pantallas lo siguen usando
+      hasta que se reescriban en Fase 3.
 
 ### Fase 3 — Rediseño de pantallas
 - [ ] Navegación: **tabs inferiores** para móvil (Facturar · Productos · Inventario ·
