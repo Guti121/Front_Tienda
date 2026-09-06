@@ -8,4 +8,5 @@ export { Loader } from "./Loader";
 export { EmptyState } from "./EmptyState";
 export { Divider } from "./Divider";
 export { Icon } from "./Icon";
+export { ListItem } from "./ListItem";
 export { ToastProvider, useToast } from "./Toast";

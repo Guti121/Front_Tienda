@@ -298,10 +298,27 @@ web` OK + eslint limpio.
 - [x] `.eslintrc.js`: `env: { browser: true }` (RN/Hermes tiene `setTimeout`,
       `URLSearchParams`, `localStorage` en web).
 
+**Incremento 2 (2026-09-06)** — navegación por tabs + home. Verificado:
+`expo export --platform web` OK + eslint limpio.
+- [x] **`app/drawer/_layout.jsx`**: de `<Drawer>` (expo-router/drawer) a
+      `<Tabs>` (expo-router). Config `NAV` con `roles` por pantalla + flag
+      `primary`. 5 tabs visibles: Inicio · Facturar · Productos · Catálogo · Más
+      (cada una filtrada por rol vía `href: null`). El resto de pantallas siguen
+      siendo rutas navegables pero fuera de la barra. `tabBarStyle`/`headerStyle`
+      tematizados con `useTheme()`. Export `allowedFor(role)`.
+- [x] **`app/drawer/more.jsx`** (nueva): pantalla "Más" — tarjeta de usuario
+      (nombre/email/rol como `Badge`), lista de pantallas secundarias permitidas
+      por rol (`ListItem` + `Divider`) y **Cerrar sesión** (`handleLogout`).
+- [x] **`app/drawer/index.jsx`** reescrita sobre `src/ui/`: saludo + `Badge` de
+      rol + grid de accesos rápidos filtrados por rol. Sin `LinearGradient` ni
+      `react-native-reanimated`; chequeo ligero de token con `expiredGetToken`.
+- [x] **`src/ui/ListItem.jsx`** (nueva) + barrel: fila icono + título +
+      subtítulo + chevron/acción, variante `danger`.
+- Nota: `src/components/customDrawer.jsx` queda huérfano (se borra al limpiar
+  en el último incremento).
+
 **Pendiente del incremento:**
-- [ ] Navegación: **tabs inferiores** móvil (Facturar · Productos · Inventario ·
-      Catálogo · Más) + drawer solo web/tablet. Mantener filtrado por rol.
-- [ ] Resto de pantallas sobre `src/ui/` + React Query: home, **POS (facturar)**,
+- [ ] Resto de pantallas sobre `src/ui/` + React Query: **POS (facturar)**,
       productos (lista/alta/detalle/editar), inventario, catálogo público,
       ajustes de tienda, perfil, QR aliado.
 - [ ] Romper componentes de 400–650 líneas en subcomponentes + hooks

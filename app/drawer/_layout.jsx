@@ -1,168 +1,129 @@
-import { Drawer } from "expo-router/drawer";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { StyleSheet, Text, View } from "react-native";
-import { iconEye, iconQrCode, iconStore } from "../../src/components/icons/icons";
-import { useRouter } from "expo-router";
+import { useEffect } from "react";
+import { Tabs, useRouter } from "expo-router";
 import { useSelector } from "react-redux";
-import { useEffect, useState } from "react";
-import CustomDrawerContent from "../../src/components/customDrawer";
-import theme from "../../src/components/themeStyles/theme";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-// 🔥 Filtrar pantallas según el tipo de usuario
-export const getAllowedScreens = (user) => {
-  if (!user || !user.typeUser) return []; // Si no hay usuario, no hay pantallas
+import { useTheme } from "../../src/theme/ThemeProvider";
 
-  const role = user.typeUser;
-
-  const screens = [
-    {
-      name: "index",
-      title: "Principal",
-      allowed: ["creator", "admin", "worker", "cliente"],
-    },
-    {
-      name: "billDrawer",
-      title: "Facturar",
-      allowed: ["creator", "admin", "worker"],
-    },
-    {
-      name: "addProductsColletionDrawer",
-      title: "Ingreso de producto",
-      allowed: ["creator"],
-    },
-    {
-      name: "productsDrawer",
-      title: "Productos",
-      allowed: ["creator", "admin"],
-    },
-    {
-      name: "billsGenerateDrawer",
-      title: "Ver Facturas",
-      icon: iconEye,
-      allowed: ["creator","admin"],
-    },
-    {
-      name: "settingsStoreDrawer",
-      title: "Mi tienda",
-      icon: iconStore,
-      allowed: ["creator",'admin'],
-    },
-    {
-      name: "stocktaking",
-      title: "Inventario",
-      allowed: ["creator"],
-    },
-     {
-      name: "catalog",
-      title: "Catalogo",
-      allowed: ["creator", "admin", "worker"],
-    },
-    {
-      name: "addToCompanyDrawer",
-      title: "Qr Aliado",
-      icon: iconQrCode,
-      allowed: ["cliente"],
-    },
-
-   
-  ];
-
-  const filteredScreens = screens.filter((screen) =>
-    screen.allowed.includes(role)
-  );
-
-
-  return filteredScreens;
+// Config de navegación. `primary` = aparece en la barra inferior; el resto vive
+// dentro de la pestaña "Más". `roles` filtra por tipo de usuario.
+export const NAV = {
+  index: {
+    title: "Inicio",
+    icon: "home-variant-outline",
+    roles: ["creator", "admin", "worker", "cliente"],
+    primary: true,
+  },
+  billDrawer: {
+    title: "Facturar",
+    icon: "cash-register",
+    roles: ["creator", "admin", "worker"],
+    primary: true,
+  },
+  productsDrawer: {
+    title: "Productos",
+    icon: "package-variant-closed",
+    roles: ["creator", "admin"],
+    primary: true,
+  },
+  catalog: {
+    title: "Catálogo",
+    icon: "storefront-outline",
+    roles: ["creator", "admin", "worker"],
+    primary: true,
+  },
+  more: {
+    title: "Más",
+    icon: "dots-horizontal",
+    roles: ["creator", "admin", "worker", "cliente"],
+    primary: true,
+  },
+  // Secundarias: se abren desde "Más", no salen en la barra.
+  addProductsColletionDrawer: {
+    title: "Ingreso de producto",
+    icon: "plus-box-outline",
+    roles: ["creator"],
+  },
+  billsGenerateDrawer: {
+    title: "Ver facturas",
+    icon: "file-document-outline",
+    roles: ["creator", "admin"],
+  },
+  stocktaking: {
+    title: "Inventario",
+    icon: "clipboard-list-outline",
+    roles: ["creator"],
+  },
+  settingsStoreDrawer: {
+    title: "Mi tienda",
+    icon: "cog-outline",
+    roles: ["creator", "admin"],
+  },
+  addToCompanyDrawer: {
+    title: "QR aliado",
+    icon: "qrcode-scan",
+    roles: ["cliente"],
+  },
 };
 
-export default function Layout() {
+export const allowedFor = (role) =>
+  Object.entries(NAV)
+    .filter(([, cfg]) => cfg.roles.includes(role))
+    .map(([name, cfg]) => ({ name, ...cfg }));
+
+export default function DrawerLayout() {
   const router = useRouter();
   const user = useSelector((state) => state.user.user);
-  const [isMounted, setIsMounted] = useState(false);
+  const { colors } = useTheme();
+  const role = user?.typeUser;
 
   useEffect(() => {
-    setIsMounted(true); // Indica que el componente ya montó
-  }, []);
-
-  useEffect(() => {
-    if (isMounted && !user) {
-      router.replace("/login");
-    }
+    if (!user) router.replace("/login");
   }, [user]);
-  const allowedScreens = getAllowedScreens(user);
 
   return (
-    <GestureHandlerRootView style={styles.container}>
-      <Drawer
-          screenOptions={{
-            drawerContentStyle: styles.drawerContentStyles,
-            drawerLabelStyle: styles.drawerLabel,
-            drawerItemStyle: styles.drawerItemStyle,
-            drawerActiveTintColor: "#ffffff",
-            drawerActiveBackgroundColor: "#5e5ce6",
-            headerTintColor: theme.colors.textSecundary,
-            headerStyle: {
-              backgroundColor:theme.colors.backgroundColor, 
-              ...theme.shadow,
-              shadowColor: theme.colors.primary,
-
-            },
-          }}
-
-        drawerContent={(props) => (
-          <CustomDrawerContent
-            {...props}
-            user={user}
-            allowedScreens={allowedScreens}
-          />
-        )} // ✅ Aquí debe ir el CustomDrawerContent
-      >
-        {allowedScreens.map((screen) => (
-          <Drawer.Screen
-            key={screen.name}
-            name={screen.name}
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textFaint,
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+          height: 58,
+          paddingBottom: 6,
+          paddingTop: 6,
+        },
+        tabBarLabelStyle: { fontSize: 11 },
+        headerStyle: {
+          backgroundColor: colors.surface,
+          borderBottomColor: colors.border,
+          borderBottomWidth: 1,
+        },
+        headerTitleStyle: { color: colors.text },
+        headerTintColor: colors.text,
+        headerShadowVisible: false,
+      }}
+    >
+      {Object.entries(NAV).map(([name, cfg]) => {
+        const visible = cfg.primary && role && cfg.roles.includes(role);
+        return (
+          <Tabs.Screen
+            key={name}
+            name={name}
             options={{
-              title: screen.title, // ✅ Título en la barra superior (Header)
-              drawerLabel: screen.title, // ✅ Título en el Drawer
-              drawerIcon: screen.icon
-                ? () => screen.icon({ size: 24 }) // ✅ Icono del Drawer
-                : undefined, // ✅ Icono opcional
-              
+              title: cfg.title,
+              href: visible ? undefined : null,
+              tabBarIcon: ({ color, size }) => (
+                <MaterialCommunityIcons
+                  name={cfg.icon}
+                  size={size ?? 22}
+                  color={color}
+                />
+              ),
             }}
           />
-        ))}
-      </Drawer>
-    </GestureHandlerRootView>
+        );
+      })}
+    </Tabs>
   );
 }
-
-// Estilos
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#ffffff", // fondo general
-  },
-  drawerContentStyles: {
-    flex: 1,
-    backgroundColor: "#f0f0f0", // fondo del drawer
-  },
-  drawerLabel: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: "#1e1e1e",
-  },
-  drawerItemStyle: {
-    borderRadius: 10,
-    marginVertical: 4,
-  },
-});
-
-
-
-
-const screenStyleCustoms = () => ({
-  drawerItemStyle: { borderRadius: 15 },
-  drawerActiveBackgroundColor: "#454545",
-  drawerActiveTintColor: "#fafbfd",
-  drawerLabelStyle: { fontSize: 16, fontWeight: "bold" },
-});
