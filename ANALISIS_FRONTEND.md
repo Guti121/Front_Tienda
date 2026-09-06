@@ -371,9 +371,23 @@ Verificado: `expo export --platform web` OK + eslint limpio.
 - Nota: `product/modalUpdateProduct.jsx` (stub "Hello") y `product/viewBarCode.jsx`
   quedan huérfanos; se borran en el incremento de limpieza.
 
+**Incremento 5 (2026-09-06)** — Alta de producto. Verificado: `expo export
+--platform web` OK + eslint limpio.
+- [x] **`src/components/colletion/addProductsColletion.jsx`** reescrito
+      (651→~340) sobre `src/ui/` + React Query. `useMutation` para crear
+      (`createProduct`) y para el precio sugerido (`suggestRetailPrice`).
+      Validación local que replica las reglas del serializer (nombre/detalles
+      obligatorios, valor_mayor>0, valor>0, valor≥valor_mayor, unidades>0, tipo).
+      Errores por campo desde `ApiError.fields`. Sin `console.log`/`alert` de
+      debug. Confirmación en `Sheet`. Selector de tipo = `TypeProductPicker`
+      (Sheet + `useInfiniteQuery` sobre `listTypeProducts`) — reemplaza a
+      `modalAddProductColletion.jsx` (queda huérfano).
+- [x] **`src/api/products.js`**: + `createProduct(fd)`, `listTypeProducts(url)`.
+- [x] **`src/api/pricing.js`** (nuevo): `suggestRetailPrice({ valorMayor, margen })`.
+- Nota: `modalAddProductColletion.jsx` queda huérfano; se borra en la limpieza.
+  `componentWebimage.jsx` (subida de imágenes) se conserva sin cambios.
+
 **Pendiente del incremento:**
-- [ ] **Alta de producto** (`addProductsColletion.jsx`, 651 líneas + subida de
-      imágenes web/móvil) sobre `src/ui/` + React Query.
 - [ ] Resto de pantallas sobre `src/ui/` + React Query: **tipos de producto**,
       inventario, catálogo público, ajustes de tienda, perfil, QR aliado,
       **escáner de código de barras** (`modalBarCode`, quitar `react-webcam` →

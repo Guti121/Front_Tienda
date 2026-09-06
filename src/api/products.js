@@ -55,3 +55,15 @@ export async function getBarcode(productId) {
   const { data } = await api.get(`facturas/api/barcode/${productId}/`);
   return data;
 }
+
+// POST /create/  (multipart: campos + `imagenes`). Devuelve el producto creado.
+export async function createProduct(formData) {
+  const { data } = await api.post("create/", formData);
+  return data;
+}
+
+// GET /listType/  (paginado). `pageUrl` es el `next` absoluto o "listType/".
+export async function listTypeProducts(pageUrl = "listType/") {
+  const { data } = await api.get(pageUrl);
+  return data; // { results, next, ... }
+}

@@ -1,652 +1,422 @@
+import { useState } from "react";
+import { FlatList, View } from "react-native";
+import { Link, router } from "expo-router";
 import {
-  Pressable,
-  Text,
-  TextInput,
-  View,
-  StyleSheet,
-  Modal,
-  Platform,
-  Switch,
-} from "react-native";
-import { expiredGetToken } from "../axios/generalAxiosRequest";
-import { Link, router, useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
-import {
-  handleCreateProduct,
-  handleSuggestedRetailPrice,
-} from "./axiosRequest";
-import theme, { height, width } from "../themeStyles/theme";
-import { ScrollView } from "react-native";
-import { cleanNumber, formatToCOP, pesosFormat, pesosformat } from "../icons/functionFormat";
-import { ModalConfirm } from "../icons/modalConfirm";
-import { BarNotification } from "../icons/barNotification";
-import { checkIcon, iconInfo, iconSearch } from "../icons/icons";
-import ModalTypeProduct from "./modalAddProductColletion";
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
+
+import { createProduct, listTypeProducts } from "../../api/products";
+import { suggestRetailPrice } from "../../api/pricing";
+import { ApiError } from "../../api/http";
+import { cleanNumber, formatToCOP, pesosFormat } from "../icons/functionFormat";
 import ImagePickerWeb from "./componentWebimage";
-import AnimatedButton from "../catalog/stylesCatalogo/buttonAnimate";
-import { isWeb } from "../token/localstorage";
+import { useTheme } from "../../theme/ThemeProvider";
+import {
+  Badge,
+  Button,
+  Card,
+  Icon,
+  ListItem,
+  Loader,
+  Screen,
+  Sheet,
+  Text,
+  TextField,
+  Toggle,
+  useToast,
+} from "../../ui";
 
-// Esta vista viene de el drawer addProductsDrawer y tiene como funcion renderizar el formulario
-// Y añadir los nuevos producto a el almacen o stock
+const round2 = (n) => Math.round(n * 100) / 100;
 
-export function AddProductsColletion() {
-  //hook inputs
-
-  const [datesProducts, setDatesProducts] = useState([
-    {
-      nombre: "",
-      tipo_producto: "",
-      detalles: "",
-      valor_mayor: 0,
-      valor_costos_fijos: 0,
-      valor: 0,
-      unidades_disponibles: 0,
-    },
-  ]);
-  const [modalMessage, setModalMessage] = useState("");
-  //Hook message price suggested
-  const [messageSuggested, setMessageSuggested] = useState([]);
-  const [errorParams, setErrorParams] = useState(false);
-
-  //Hook modal typeProduct
-  const [productImages, setProductImages] = useState([]); // <- plural
-
-  const [modalState, setModalState] = useState(false);
-  const [typeProductList, setTypeProductList] = useState([]);
-  //hook modal create product
-  const [stateModalCreate, setStateModalCreate] = useState(false);
-  const [messageModalCreate, setMessageModalCreate] = useState(false);
-  const [isChecked, setIsChecked] = useState(false);
-  const [percent, setPercent] = useState(0)
-  const [isPublic, setIsPublic] = useState(false);
-
-  const [valorMayor, setValorMayor] = useState(0)
-  const [valor, setValor] = useState(0)
-
-  //Error
-  const [errorMessage, setErrorMessage] = useState(false);
-
-  // Establecemos la funcion que va a mostrarnos el precio sugerido
-  useFocusEffect(
-    useCallback(() => {
-
-      clearForm(); // Llama a la función cuando la pantalla se enfoque
-    }, []) // Dependencias vacías para ejecutarlo solo cuando la pantalla se enfoca
-  );
-
-  const handleRequest = async (which) => {
-    try {
-      token = await expiredGetToken();
-      if (!token) {
-        router.replace("login/");
-      }
-      if (which === "SRP") {
-        try {
-          const request = await handleSuggestedRetailPrice(
-            datesProducts[0].valor_mayor,
-            token,
-            percent
-          );
-
-          setMessageSuggested(request.data);
-        }
-        catch (error) {
-          setErrorParams(error?.response?.data?.error || 'Error al Buscar Datos')
-        }
-      }
-      // Si which es HTP significa que estamos consultando los tipos de productos existentes
-      if (which === "HTP") {
-        setModalState(true);
-      }
-
-      if (which === "CreateProduct") {
-        try {
-          const data = datesProducts[0];
-          const formData = new FormData();
-
-          // Explicit fields (safer than for...in)
-          formData.append("nombre", data.nombre || "");
-          formData.append("tipo_producto", String(data.tipo_producto || ""));
-          formData.append("detalles", data.detalles || "");
-          formData.append("valor", String(data.valor || 0));
-          formData.append("valor_mayor", String(data.valor_mayor || 0));
-          formData.append(
-            "unidades_disponibles",
-            String(data.unidades_disponibles || 0)
-          );
-          formData.append(
-            "valor_costos_fijos",
-            String(data.valor_costos_fijos || 0)
-          );
-          formData.append("publicar", String(isPublic));
-
-          // Multiple images
-          if (productImages?.length > 0) {
-            productImages.forEach((img, index) => {
-              if (img.file) {
-                // WEB → File object
-                formData.append("imagenes", img.file);
-              } else if (img.uri) {
-                // MOBILE → build file object manually
-                const uriParts = img.uri.split(".");
-                const fileType = uriParts[uriParts.length - 1] || "jpg";
-
-                formData.append("imagenes", {
-                  uri: img.uri,
-                  name: `image_${index}.${fileType}`,
-                  type: `image/${fileType}`,
-                });
-              }
-            });
-          }
-
-          // Debug: see exactly what is being sent
-          for (let pair of formData.entries()) {
-            console.log(pair[0], pair[1]);
-          }
-
-          // Send request FIRST
-          const request = await handleCreateProduct(token, formData);
-
-          // Close modal AFTER success
-          setStateModalCreate(false);
-
-          setMessageModalCreate(true);
-
-          setTimeout(() => {
-            setMessageModalCreate(false);
-
-            if (request?.data?.id) {
-              router.push({
-                pathname: "/products/detailProduct",
-                params: { id: request.data.id },
-              });
-            }
-          }, 1500);
-
-          clearForm();
-        } catch (error) {
-          console.log("FULL ERROR:", error);
-          console.log("ERROR RESPONSE:", error?.response?.data);
-
-          const errorMessage =
-            error.response?.data?.error?.error ||
-            error.response?.data?.error ||
-            error.response?.data?.detail ||
-            error.response?.data?.detalles ||
-            "Error desconocido";
-
-          setErrorMessage(
-            typeof errorMessage === "string" &&
-              (errorMessage.length > 100 ||
-                errorMessage === "This field may not be blank.")
-              ? "Ocurrió un error inesperado, verifica los campos e inténtalo de nuevo."
-              : String(errorMessage)
-          );
-        }
-      }
-    } catch (error) {
-      if (error.response.data.error) {
-        setErrorParams(error.response.data.error);
-      }
-    }
-  };
-  const addTolist = (key, value) => {
-    setDatesProducts((prev) => {
-      const updatePrev = { ...prev[0] };
-      updatePrev[key] = value;
-
-      //devuelve el nuevo estado
-      return [{ ...updatePrev }];
+// --- Selector de tipo de producto (hoja inferior + lista paginada) ----------
+function TypeProductPicker({ visible, onClose, onSelect }) {
+  const { spacing } = useTheme();
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteQuery({
+      queryKey: ["typeProducts"],
+      queryFn: ({ pageParam }) => listTypeProducts(pageParam),
+      initialPageParam: "listType/",
+      getNextPageParam: (last) => last?.next ?? undefined,
+      enabled: visible,
     });
-  };
 
-  //verificamos si el dato es valido
-  const isNum = (num) => {
-    if (isNaN(parseInt(num))) {
-      setErrorMessage("Verificar los Valores numericos!");
-    }
-  };
-  //-----------------------------------------------------------------------
-  //resivimos el item seleccionado en el modal
-  const typeProductSelect = (item) => {
-    setTypeProductList(item);
-    setModalState(false);
-    addTolist("tipo_producto", item.id);
-  };
-
-  //closeModal
-  const closeModalTP = () => {
-    setModalState(false);
-  };
-  //CloseModal Create Product
-  const closeModalCP = () => {
-    setStateModalCreate(false);
-  };
-
-  //Formulamos el mensaje del modalConfirm
-  const messageGenerate = () => {
-
-    const product = datesProducts[0]; // Accede al primer objeto en el array
-    const message = `Deseas confimar la creacion del siguiente producto?\n 
-    Nombre Producto: 
-    ${product.nombre}\n
-    Tipo Producto: 
-    ${typeProductList.tipo_producto}\n
-    detalles: 
-    ${product.detalles}\n
-    Valor Mayor: 
-    ${pesosFormat(product.valor_mayor)}\n
-    Valor Costos Fijos: 
-    ${pesosFormat(product.valor_costos_fijos)}\n
-    Valor: 
-    ${pesosFormat(product.valor)}\n
-    Unidades Disponibles: 
-    ${product.unidades_disponibles}
-    `;
-    return message;
-  };
-
-  useEffect(() => {
-    if (stateModalCreate) {
-      setModalMessage(messageGenerate()); // Only runs when modal opens
-    }
-  }, [stateModalCreate]);
-
-  //se agrega una funcion para limpiar el formulario
-  const clearForm = () => {
-    setDatesProducts([
-      {
-        nombre: "",
-        tipo_producto: "",
-        detalles: "",
-        valor_mayor: 0,
-        valor_costos_fijos: 0,
-        valor: 0,
-        unidades_disponibles: 0,
-        publicar: false,
-      },
-    ]);
-    setIsPublic(false)
-    setPercent(0)
-    setValorMayor(0)
-    setValor(0)
-    setProductImages([]);;
-    setTypeProductList([]);
-    setErrorMessage(false);
-    setErrorParams(false);
-    setIsChecked(false)
-    setMessageSuggested([])
-  };
-
-
+  const items = (data?.pages ?? []).flatMap((p) => p?.results ?? []);
 
   return (
-    <View style={styles.containerPrincipal}>
-      {messageModalCreate && (
-        <BarNotification
-          icon={checkIcon()}
-          message={"Producto Creado de manera exitosa"}
-        />
-      )}
-      <View style={styles.containerHeader}>
-        <Text style={styles.titleHeader}>Datos del Producto</Text>
-      </View>
-      <View style={styles.viewContainerInfo}>
-        <Text style={{ color: "#666", textAlign: "left", fontSize: 13, marginBottom: 10 }}>
-          Todos los campos son obligatorios
-        </Text>
-      </View>
-      <ScrollView>
-        <View style={styles.containerInf}>
-          <View
-            style={styles.viewTextInput}
-          >
-            <Text>Nombre del Producto*</Text>
-          </View>
-          <TextInput
-            style={styles.inputInf}
-            value={datesProducts[0].nombre}
-            onChangeText={(text) => {
-              addTolist("nombre", text);
-            }}
-          />
-          <View
-            style={styles.viewTextInput}
-          >
-            <Text>Detalles*</Text>
-          </View>
-          <TextInput
-            value={datesProducts[0].detalles}
-            onChangeText={(text) => addTolist("detalles", text)}
-            style={[styles.inputInf, { height: 100, textAlignVertical: 'top', textTransform: "none" }]} // Ajusta el estilo para multiline
-            multiline
-          />
-          <View
-            style={styles.viewTextInput}
-          >
-            <Text>Valor por mayor*</Text>
-          </View>
-
-          <TextInput
-            placeholder="$"
-            style={styles.inputInf}
-            value={valorMayor}
-            keyboardType="numeric"
-            onChangeText={(text) => {
-              setIsChecked(false)
-              addTolist('valor_costos_fijos', 0)
-              addTolist("valor_mayor", cleanNumber(text));
-              setValorMayor(formatToCOP(text))
-              setMessageSuggested([]);
-              setErrorParams(false);
-              setErrorMessage(false);
-              isNum(text);
-            }}
-          />
-          <View style={styles.priceSuggestionBox}>
-            <Text style={styles.sectionTitle}>📈 Precio sugerido de venta</Text>
-            {!percent && (
-              <Text style={{ fontSize: 12, color: '#bbb', marginVertical: 4 }}>
-                * Si no asignas un %, se usará el porcentaje configurado en los costos fijos.
-              </Text>
-            )}
-            <View style={styles.row}>
-              <TextInput
-                placeholder="% ganancia"
-                style={styles.percentInput}
-                keyboardType="numeric"
-                value={percent.toString()}
-                onChangeText={(text) => setPercent(text)}
-              />
-              <Pressable
-                onPress={() => handleRequest("SRP")}
-                style={styles.calcButton}
+    <Sheet visible={visible} onClose={onClose} title="Tipo de producto">
+      <View style={{ maxHeight: 360 }}>
+        {isLoading ? (
+          <Loader fill={false} />
+        ) : (
+          <FlatList
+            data={items}
+            keyExtractor={(it) => String(it.id)}
+            onEndReached={() => hasNextPage && fetchNextPage()}
+            onEndReachedThreshold={0.4}
+            ListFooterComponent={
+              isFetchingNextPage ? <Loader fill={false} /> : null
+            }
+            ListEmptyComponent={
+              <View
+                style={{
+                  alignItems: "center",
+                  gap: spacing.sm,
+                  padding: spacing.lg,
+                }}
               >
-                <Text style={styles.calcButtonText}>Calcular</Text>
-              </Pressable>
-            </View>
-
-            <Text style={styles.helpText}>
-              Se calcula el precio sugerido sumando tus costos fijos y el porcentaje de ganancia.
-            </Text>
-
-            {errorParams && (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{errorParams}</Text>
-                <Link
-                  style={styles.linkText}
-                  href="/myStoreSettings/costsMyStoreDrawer"
-                >
-                  Configurar costos fijos...
-                </Link>
+                <Text muted>No hay tipos de producto.</Text>
+                <Button
+                  title="Crear tipo de producto"
+                  variant="secondary"
+                  fullWidth={false}
+                  onPress={() => {
+                    onClose();
+                    router.push("/products/addTypeProductDrawer");
+                  }}
+                />
               </View>
+            }
+            renderItem={({ item }) => (
+              <ListItem
+                title={item.tipo_producto}
+                onPress={() => onSelect(item)}
+              />
             )}
-
-            {messageSuggested && Object.keys(messageSuggested).length > 0 && (
-              <View style={styles.resultBox}>
-                <Text style={styles.resultText}>
-                  💰 Precio sugerido de venta: {pesosFormat(messageSuggested.Precio_sugerido_Unidad)}
-                </Text>
-                <Text style={styles.resultText}>
-                  🧮 Valor con CFs: {pesosFormat(messageSuggested.ValorXmayor_CF
-                  )}
-                </Text>
-                <Text style={styles.resultText}>
-                  📊 Ganancia estimada: {Math.round(messageSuggested.Margen * 100)}%
-                </Text>
-
-                <View style={styles.switchRow}>
-                  <Text style={{ color: "#333", fontWeight: "500" }}>¿Agregar CFs al producto?</Text>
-                  <Switch
-                    value={isChecked}
-                    onValueChange={(newValue) => {
-                      setIsChecked(newValue);
-                      let valorConCFs =
-                        messageSuggested.ValorXmayor_CF - datesProducts[0].valor_mayor;
-                      const valorRedondeado = parseFloat(valorConCFs.toFixed(2));
-                      addTolist("valor_costos_fijos", newValue ? valorRedondeado : 0);
-                    }}
-                  />
-                </View>
-              </View>
-            )}
-          </View>
-
-
-          <View
-            style={styles.viewTextInput}
-          >
-            <View
-              style={{
-                alignItems: "flex-start",
-                justifyContent: "flex-start",
-                width: width * 0.8,
-              }}
-            >
-              <Text>Valor*</Text>
-            </View>
-          </View>
-          <TextInput
-            placeholder="$"
-            style={styles.inputInf}
-            value={valor}
-            keyboardType="numeric"
-            onChangeText={(text) => {
-              addTolist("valor", cleanNumber(text));
-              setValor(formatToCOP(text))
-            }}
-
           />
-          <View
-            style={styles.viewTextInput}
-          >
-            <View
-              style={{
-                alignItems: "flex-start",
-                justifyContent: "flex-start",
-                width: width * 0.8,
-              }}
-            >
-              <Text>Unidades*</Text>
-            </View>
-          </View>
-          <TextInput
-            style={styles.inputInf}
-            value={datesProducts[0].unidades_disponibles}
-            keyboardType="numeric"
-            onChangeText={(text) => {
-              addTolist("unidades_disponibles", text);
-              setErrorMessage(false);
-              isNum(text);
-            }}
-          />
-          <View
-            style={styles.viewTextInput}
-          >
-            <Text>Tipo de producto*</Text>
-          </View>
-          <View style={{ ...theme.viewTextInputIcon }}>
-            <TextInput
-              editable={false}
-              style={{ ...theme.textInputIcon }}
-              value={typeProductList.tipo_producto}
-            />
-
-
-            <Pressable
-              style={{ ...theme.pressableInputIcon }}
-              onPressOut={() => {
-                setTypeProductList([]);
-                handleRequest("HTP");
-              }}
-            >
-              {iconSearch({ size: 16 })}
-            </Pressable>
-
-
-          </View>
-          <View
-            style={styles.viewTextInput}
-          >
-            <Text>Publicar*</Text>
-            <Switch
-              value={isPublic}
-              onValueChange={(newValue) => {
-                setIsPublic(newValue)
-                if (newValue) {
-                  addTolist('publicar', newValue)
-                } else {
-                  addTolist('publicar', false)
-                }
-              }} />
-          </View>
-          {errorMessage && <Text style={{ color: "red" }}>{errorMessage}</Text>}
-          <ImagePickerWeb images={productImages} setImages={setProductImages} />
-        </View>
-        <View style={styles.containerPressable}>
-          <AnimatedButton
-            title="Crear Producto"
-            style={styles.pressables}
-            textStyle={styles.TextPressables}
-            onPress={() => setStateModalCreate(true)}
-          />
-          <AnimatedButton
-            title="Limpiar Formulario"
-            onPress={() => {
-              clearForm();
-            }}
-            style={styles.pressables}
-            textStyle={styles.TextPressables}
-          />
-        </View>
-      </ScrollView>
-      <ModalTypeProduct
-        state={modalState}
-        data={typeProductList}
-        itemPressed={typeProductSelect}
-        close={closeModalTP}
-      />
-      <ModalConfirm
-        state={stateModalCreate}
-        message={modalMessage}
-        handleIPositiveButton={() => handleRequest("CreateProduct")}
-        onClose={closeModalCP}
-      />
-    </View>
+        )}
+      </View>
+    </Sheet>
   );
 }
 
-const styles = StyleSheet.create({
-  containerPrincipal: { flex: 1, padding: 10, ...theme.backgroundColorPrincipal },
-  containerHeader: { margin: 10, marginEnd: 20, alignItems: "flex-start" },
-  titleHeader: { ...theme.textTitle },
-  infoBox: { alignItems: "center", marginVertical: 10, padding: 10, borderRadius: 10, ...theme.pressableColor },
-  infoText: { color: "white", textAlign: "center" },
-  scrollForm: { paddingHorizontal: 20, paddingBottom: 30 },
-  label: { fontWeight: "bold", marginBottom: 5 },
-  inputInf: { ...theme.textInputGlobal, height: 45, borderRadius: 10, borderWidth: 1, borderColor: "#ccc", paddingHorizontal: 10, backgroundColor: "#fff" },
-  rowInput: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginVertical: 10 },
-  percentInput: { width: 50, height: 40, borderWidth: 1, borderColor: '#ccc', borderRadius: 8, paddingHorizontal: 5 },
-  calcButton: { ...theme.pressable, width: '60%', marginRight: 10 },
-  linkText: { color: 'blue', textDecorationLine: 'underline' },
-  errorText: { color: 'red', marginTop: 10 },
-  containerPressable: { flexDirection: "row", justifyContent: "space-around", marginTop: 20 },
-  pressables: { ...theme.pressable, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10 },
-  TextPressables: { ...theme.textPressable },
-  viewTextInput: { alignItems: "flex-start", justifyContent: "flex-start", width: width * 0.8, paddingTop: 5 },
-  priceSuggestionBox: {
-    backgroundColor: "#f8f9fa",
-    padding: 15,
-    borderRadius: 12,
-    marginVertical: 15,
-    borderColor: "#e5e5ea",
-    borderWidth: 1,
-  },
+// --- Formulario de alta de producto ---------------------------------------
+export function AddProductsColletion() {
+  const { colors, spacing } = useTheme();
+  const toast = useToast();
+  const queryClient = useQueryClient();
 
-  sectionTitle: {
-    color: "#1c1c1e",
-    fontWeight: "bold",
-    fontSize: 16,
-    marginBottom: 10,
-  },
+  const [nombre, setNombre] = useState("");
+  const [detalles, setDetalles] = useState("");
+  const [valorMayorTxt, setValorMayorTxt] = useState("");
+  const [valorTxt, setValorTxt] = useState("");
+  const [unidadesTxt, setUnidadesTxt] = useState("");
+  const [tipo, setTipo] = useState(null);
+  const [publicar, setPublicar] = useState(false);
+  const [percent, setPercent] = useState("");
+  const [addCF, setAddCF] = useState(false);
+  const [images, setImages] = useState([]);
 
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-    marginBottom: 10,
-  },
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [formError, setFormError] = useState(null);
 
-  percentInput: {
-    width: 80,
-    height: 40,
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    color: "#000",
-    borderWidth: 1,
-    borderColor: "#ccc",
-  },
+  const valorMayor = cleanNumber(valorMayorTxt);
+  const valor = cleanNumber(valorTxt);
+  const unidades = parseInt(unidadesTxt, 10) || 0;
 
-  calcButton: {
-    backgroundColor: "#5e5ce6",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
+  const calc = useMutation({
+    mutationFn: () => suggestRetailPrice({ valorMayor, margen: percent }),
+    onSuccess: () => setAddCF(false),
+    onError: (err) =>
+      toast.error(
+        err instanceof ApiError
+          ? err.message
+          : "No se pudo calcular el precio.",
+      ),
+  });
+  const suggested = calc.data;
+  const valorCostosFijos =
+    addCF && suggested ? round2(suggested.ValorXmayor_CF - valorMayor) : 0;
 
-  calcButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 14,
-  },
+  const create = useMutation({
+    mutationFn: (formData) => createProduct(formData),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Producto creado");
+      setConfirmOpen(false);
+      reset();
+      if (data?.id) {
+        router.replace({
+          pathname: "/products/detailProduct",
+          params: { id: data.id },
+        });
+      }
+    },
+    onError: (err) => {
+      setConfirmOpen(false);
+      const fields = err instanceof ApiError ? err.fields : null;
+      const first = fields
+        ? Object.values(fields).flat().filter(Boolean)[0]
+        : null;
+      setFormError(
+        first ||
+          (err instanceof ApiError
+            ? err.message
+            : "No se pudo crear el producto."),
+      );
+    },
+  });
 
-  helpText: {
-    color: "#666",
-    fontSize: 12,
-    marginBottom: 10,
-  },
+  function reset() {
+    setNombre("");
+    setDetalles("");
+    setValorMayorTxt("");
+    setValorTxt("");
+    setUnidadesTxt("");
+    setTipo(null);
+    setPublicar(false);
+    setPercent("");
+    setAddCF(false);
+    setImages([]);
+    setFormError(null);
+    calc.reset();
+  }
 
-  errorBox: {
-    backgroundColor: "#ffeceb",
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 10,
-  },
+  function validate() {
+    if (!nombre.trim()) return "El nombre es obligatorio.";
+    if (!detalles.trim()) return "Los detalles son obligatorios.";
+    if (valorMayor <= 0) return "El valor por mayor debe ser mayor que 0.";
+    if (valor <= 0) return "El valor de venta debe ser mayor que 0.";
+    if (valor < valorMayor)
+      return "El valor de venta no puede ser menor al valor por mayor.";
+    if (unidades <= 0) return "Las unidades deben ser mayores que 0.";
+    if (!tipo) return "Selecciona un tipo de producto.";
+    return null;
+  }
 
-  errorText: {
-    color: "red",
-    fontSize: 13,
-    marginBottom: 5,
-  },
+  function buildFormData() {
+    const fd = new FormData();
+    fd.append("nombre", nombre.trim());
+    fd.append("tipo_producto", String(tipo.id));
+    fd.append("detalles", detalles.trim());
+    fd.append("valor", String(valor));
+    fd.append("valor_mayor", String(valorMayor));
+    fd.append("valor_costos_fijos", String(valorCostosFijos));
+    fd.append("unidades_disponibles", String(unidades));
+    fd.append("publicar", String(publicar));
+    images.forEach((img, i) => {
+      if (img?.file) {
+        fd.append("imagenes", img.file);
+      } else if (img?.uri) {
+        const ext = img.uri.split(".").pop() || "jpg";
+        fd.append("imagenes", {
+          uri: img.uri,
+          name: `image_${i}.${ext}`,
+          type: `image/${ext}`,
+        });
+      }
+    });
+    return fd;
+  }
 
-  linkText: {
-    color: "#5e5ce6",
-    fontSize: 13,
-    textDecorationLine: "underline",
-  },
+  function onSubmit() {
+    const err = validate();
+    if (err) {
+      setFormError(err);
+      return;
+    }
+    setFormError(null);
+    setConfirmOpen(true);
+  }
 
-  resultBox: {
-    marginTop: 10,
-    backgroundColor: "#e8e8f8",
-    padding: 12,
-    borderRadius: 8,
-  },
+  return (
+    <Screen scroll>
+      <View style={{ gap: spacing.lg }}>
+        <Text variant="caption" muted>
+          Todos los campos son obligatorios.
+        </Text>
 
-  resultText: {
-    color: "#333",
-    fontSize: 14,
-    marginVertical: 2,
-    fontWeight: "500",
-  },
+        <TextField
+          label="Nombre del producto"
+          value={nombre}
+          onChangeText={setNombre}
+        />
+        <TextField
+          label="Detalles"
+          value={detalles}
+          onChangeText={setDetalles}
+          multiline
+          numberOfLines={4}
+          inputStyle={{ minHeight: 90, textAlignVertical: "top" }}
+        />
+        <TextField
+          label="Valor por mayor"
+          value={valorMayorTxt}
+          onChangeText={(t) => {
+            setValorMayorTxt(formatToCOP(t));
+            calc.reset();
+            setAddCF(false);
+          }}
+          keyboardType="numeric"
+          placeholder="$"
+        />
 
-  switchRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 10,
-  },
+        {/* Precio sugerido */}
+        <Card level={0} style={{ gap: spacing.sm }}>
+          <Text weight="bold">Precio sugerido de venta</Text>
+          <Text variant="caption" muted>
+            Suma tus costos fijos y el % de ganancia. Sin %, se usa el
+            configurado en la tienda.
+          </Text>
+          <View
+            style={{
+              flexDirection: "row",
+              gap: spacing.sm,
+              alignItems: "flex-end",
+            }}
+          >
+            <View style={{ flex: 1 }}>
+              <TextField
+                label="% ganancia"
+                value={percent}
+                onChangeText={setPercent}
+                keyboardType="numeric"
+                placeholder="opcional"
+              />
+            </View>
+            <Button
+              title="Calcular"
+              fullWidth={false}
+              loading={calc.isPending}
+              disabled={valorMayor <= 0}
+              onPress={() => calc.mutate()}
+            />
+          </View>
 
-});
+          {calc.isError ? (
+            <View style={{ gap: spacing.xs }}>
+              <Text variant="small" color="danger">
+                {calc.error instanceof ApiError
+                  ? calc.error.message
+                  : "No se pudo calcular."}
+              </Text>
+              <Link
+                href="/myStoreSettings/costsMyStoreDrawer"
+                style={{ color: colors.primary }}
+              >
+                Configurar costos fijos…
+              </Link>
+            </View>
+          ) : null}
+
+          {suggested ? (
+            <View style={{ gap: spacing.xs }}>
+              <Text variant="small">
+                Precio sugerido:{" "}
+                <Text variant="small" weight="bold" color="primary">
+                  {pesosFormat(suggested.Precio_sugerido_Unidad)}
+                </Text>
+              </Text>
+              <Text variant="small" muted>
+                Valor con CF: {pesosFormat(suggested.ValorXmayor_CF)} ·
+                Ganancia: {Math.round(suggested.Margen * 100)}%
+              </Text>
+              <Toggle
+                label="Agregar costos fijos al producto"
+                value={addCF}
+                onValueChange={setAddCF}
+              />
+              {addCF ? (
+                <Badge
+                  label={`CF: ${pesosFormat(valorCostosFijos)}`}
+                  tone="brand"
+                />
+              ) : null}
+            </View>
+          ) : null}
+        </Card>
+
+        <TextField
+          label="Valor de venta"
+          value={valorTxt}
+          onChangeText={(t) => setValorTxt(formatToCOP(t))}
+          keyboardType="numeric"
+          placeholder="$"
+        />
+        <TextField
+          label="Unidades"
+          value={unidadesTxt}
+          onChangeText={setUnidadesTxt}
+          keyboardType="numeric"
+        />
+
+        {/* Tipo de producto */}
+        <View style={{ gap: spacing.xs }}>
+          <Text variant="small" weight="medium" muted>
+            Tipo de producto
+          </Text>
+          <Button
+            title={tipo ? tipo.tipo_producto : "Seleccionar tipo"}
+            variant="secondary"
+            right={<Icon name="chevron-down" size={18} color={colors.text} />}
+            onPress={() => setPickerOpen(true)}
+          />
+        </View>
+
+        <Card level={0}>
+          <Toggle
+            label="Publicar en el catálogo"
+            value={publicar}
+            onValueChange={setPublicar}
+          />
+        </Card>
+
+        <ImagePickerWeb images={images} setImages={setImages} />
+
+        {formError ? (
+          <Text color="danger" variant="small">
+            {formError}
+          </Text>
+        ) : null}
+
+        <View style={{ flexDirection: "row", gap: spacing.md }}>
+          <Button
+            title="Limpiar"
+            variant="ghost"
+            style={{ flex: 1 }}
+            onPress={reset}
+          />
+          <Button
+            title="Crear producto"
+            style={{ flex: 2 }}
+            onPress={onSubmit}
+          />
+        </View>
+      </View>
+
+      <TypeProductPicker
+        visible={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={(item) => {
+          setTipo(item);
+          setPickerOpen(false);
+        }}
+      />
+
+      <Sheet
+        visible={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title="Confirmar creación"
+      >
+        <Text muted>{nombre}</Text>
+        <Text variant="small" muted>
+          {tipo?.tipo_producto} · {unidades} u. · venta {pesosFormat(valor)}
+        </Text>
+        <Button
+          title="Crear producto"
+          loading={create.isPending}
+          onPress={() => create.mutate(buildFormData())}
+        />
+        <Button
+          title="Cancelar"
+          variant="secondary"
+          onPress={() => setConfirmOpen(false)}
+        />
+      </Sheet>
+    </Screen>
+  );
+}
+
+export default AddProductsColletion;
