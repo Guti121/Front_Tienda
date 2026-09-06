@@ -1,19 +1,32 @@
+import { Pressable } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import { useTheme } from "../theme/ThemeProvider";
 
-// Wrapper sobre @expo/vector-icons (viene con Expo, sin instalar nada).
-// El set por defecto es MaterialCommunityIcons; ver nombres en:
-// https://icons.expo.fyi/Index/MaterialCommunityIcons
-export function Icon({ name = "circle-outline", size = 22, color, style }) {
+// Wrapper sobre @expo/vector-icons (viene con Expo). Set: MaterialCommunityIcons.
+// Nombres: https://icons.expo.fyi/Index/MaterialCommunityIcons
+export function Icon({
+  name = "circle-outline",
+  size = 22,
+  color,
+  onPress,
+  style,
+  hitSlop = 8,
+}) {
   const { colors } = useTheme();
-  return (
+  const glyph = (
     <MaterialCommunityIcons
       name={name}
       size={size}
       color={color || colors.text}
-      style={style}
+      style={onPress ? undefined : style}
     />
+  );
+  if (!onPress) return glyph;
+  return (
+    <Pressable onPress={onPress} hitSlop={hitSlop} style={style}>
+      {glyph}
+    </Pressable>
   );
 }
 

@@ -1,210 +1,88 @@
-import React, { useEffect, useState } from "react";
-import {
-  TextInput,
-  View,
-  StyleSheet,
-  Text,
-  Image,
-  Dimensions,
-  Platform,
-  Pressable,
-  SafeAreaView,
-} from "react-native";
-import { handleLogin } from "./axiosRequest";
-import theme from "../themeStyles/theme";
+import { useEffect, useState } from "react";
+import { View } from "react-native";
 import { router } from "expo-router";
-import { deleteTokenStorage } from "../token/token";
 import { useDispatch } from "react-redux";
+
+import { handleLogin } from "./axiosRequest";
 import { setUser } from "../../redux/userSlice";
-import Storage from "../token/localstorage";
-import AnimatedButton from "../catalog/stylesCatalogo/buttonAnimate";
+import { clearSession } from "../../auth/session";
+import { useTheme } from "../../theme/ThemeProvider";
+import { Button, TextField, Icon, useToast } from "../../ui";
 
 export default function FormLogin() {
-  //Estados de los input para el form
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  //Estado pressable
-  const [isPressed, setIsPressed] = useState(false);
-  //Estado de error
-  const [error, setError] = useState(null);
-  //oculata contraseña
-  const [isPasswordVisible, setPasswordVisible] = useState(false);
-  //Hook para reenvio de vista
-  const [callComponent, setCallComponent] = useState(false);
-
-  //Hook redux
   const dispatch = useDispatch();
+  const toast = useToast();
+  const { spacing } = useTheme();
 
-  //Funcion para hacer el llamado axios y posterio al backend
-  const login = async () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const submit = async () => {
+    setError(null);
+    setLoading(true);
     try {
-      const request = await handleLogin(username, password);
-      dispatch(setUser(request));
-      setCallComponent(true);
-    } catch (error) {
-      await Storage.removeItem("time");
-      await Storage.removeItem("username");
-      await Storage.removeItem("token");
-      await Storage.removeItem("Refreshtoken");
-      await Storage.removeItem("user");
+      const user = await handleLogin(email.trim().toLowerCase(), password);
+      dispatch(setUser(user));
+      setDone(true);
+    } catch (e) {
+      await clearSession();
       dispatch(setUser(null));
-      setError("Verifique las credenciales enviadas");
+      const msg = typeof e === "string" ? e : "Verifica las credenciales.";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
-  //cambio de estado para realizar el reenvio a vista
   useEffect(() => {
-    if (callComponent) {
-      router.replace("/drawer");
-    }
-  }, [callComponent]);
+    if (done) router.replace("/drawer");
+  }, [done]);
+
   return (
-    <View style={styles.containerPrincipal}>
-      <View style={styles.form}>
-        <View style={[styles.container, theme.shadow]}>
-          <View style={styles.containerTextPresentation}>
-            <Text style={styles.textTitle}>Sistema De Inventario</Text>
-            <Text style={styles.textNames}>My stock app</Text>
-          </View>
-          <View style={styles.containerInputs}>
-            <Text style={styles.textNormal}>Correo:</Text>
-            <TextInput
-              style={styles.TextInputUsername}
-              value={username}
-              onChangeText={(username) => {
-                setUsername(username), setError(null);
-              }}
-              autoCapitalize="none"
-            />
-            <Text style={styles.textNormal}> Contraseña:</Text>
-            <TextInput
-              style={styles.TextInput}
-              value={password}
-              onChangeText={(password) => {
-                setPassword(password), setError(null);
-              }}
-              secureTextEntry={!isPasswordVisible}
-            />
-          </View>
-          {error ? <Text style={theme.errorText}>{error}</Text> : null}
-          <AnimatedButton
-            title={"Iniciar Sesión"}
-            style={{...theme.button}}
-            textStyle={theme.textPressable}
-            onPress={() => login()}
+    <View style={{ gap: spacing.md }}>
+      <TextField
+        label="Correo"
+        value={email}
+        onChangeText={(t) => {
+          setEmail(t);
+          setError(null);
+        }}
+        placeholder="tucorreo@ejemplo.com"
+        autoCapitalize="none"
+        keyboardType="email-address"
+        autoCorrect={false}
+        left={<Icon name="email-outline" size={18} />}
+      />
+      <TextField
+        label="Contraseña"
+        value={password}
+        onChangeText={(t) => {
+          setPassword(t);
+          setError(null);
+        }}
+        placeholder="••••••••"
+        secureTextEntry={!showPass}
+        left={<Icon name="lock-outline" size={18} />}
+        right={
+          <Icon
+            name={showPass ? "eye-off-outline" : "eye-outline"}
+            size={18}
+            onPress={() => setShowPass((v) => !v)}
           />
-           
-        </View>
-      </View>
+        }
+        error={error}
+      />
+      <Button
+        title="Iniciar sesión"
+        onPress={submit}
+        loading={loading}
+        disabled={!email || !password}
+      />
     </View>
   );
 }
-
-//Dimenciones de la pantalla
-const { width, height } = Dimensions.get("window");
-
-const styles = StyleSheet.create({
-  //Estilos de gradient
-
-  //------------------------------------
-  containerPrincipal: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "flex-end",
-    backgroundColor:theme.colors.backgroundColor,
-  },
-  form: {
-    flex: 1,
-    marginTop: 30,
-    alignItems: "center",
-
-  },
-  container: {
-    padding: 20,
-    margin: 20,
-    borderWidth: 1,
-    borderColor: "#d0d0d0",
-    backgroundColor: "#fafbfd", // Asegúrate de que el fondo sea blanco o el color deseado
-    borderRadius: 10,
-  },
-  containerTextPresentation: {
-    margin: 5,
-  },
-  containerInputs: {
-    margin: 5,
-    flexDirection: "column",
-    alignItems: "start",
-  },
-  modalBackground: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#d0d0d0",
-    borderRadius: 10,
-  },
-  TextInput: {
-    ...theme.textInputGlobal,
-    marginBottom: 10,
-    width: Platform.OS === "web" ? 300 : width * 0.7,
-    height: 40,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-  },
-  TextInputUsername: {
-    ...theme.textInputGlobal,
-    marginBottom: 10,
-    width: Platform.OS === "web" ? 300 : width * 0.7,
-    height: 40,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    textTransform: "lowercase",
-  },
-  approvedText: {
-    color: "green",
-    marginTop: 10,
-  },
-
-  modalContainer: {
-    width: 300,
-    padding: 20,
-    backgroundColor: "white",
-    borderRadius: 10,
-    maxHeight: "80%", // Limita la altura del modal
-  },
-  textTitle: {
-    ...theme.textTitle,
-    ...Platform.select({
-      android: { fontSize: 20 },
-      ios: { fontSize: 20 },
-    }),
-  },
-  textNames: {
-    ...theme.textNames,
-    ...Platform.select({
-      android: { fontSize: 15 },
-      ios: { fontSize: 15 },
-    }),
-  },
-  textNormal: {
-    ...theme.textNormal,
-    ...Platform.select({
-      android: { fontSize: 15 },
-      ios: { fontSize: 15 },
-    }),
-  },
-  textBussines: {
-    ...theme.textNames,
-    fontSize: 12,
-  },
-
-  circle: {
-    width: 80, // Ancho del círculo
-    height: 80, // Altura del círculo
-    borderRadius: 100,
-    resizeMode: "stretch",
-  },
-  textPressed: {
-    ...theme.textPressable,
-    color: "black",
-  },
-});

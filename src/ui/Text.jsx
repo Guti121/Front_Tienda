@@ -17,20 +17,24 @@ export function Text({
   const { colors, typography } = useTheme();
   const resolvedColor = muted ? colors.textMuted : colors[color] || color;
 
+  const isHeading = variant === "display" || variant === "title";
+  const w = weight || (isHeading ? "bold" : "regular");
+  const family =
+    w === "bold"
+      ? typography.familyBold
+      : w === "medium"
+        ? typography.familyMedium
+        : typography.family;
+
   return (
     <RNText
       style={[
         {
-          fontFamily:
-            weight === "bold" ? typography.familyBold : typography.family,
+          // Con fuente por peso NO se fija fontWeight (evita doble bold / ignorado).
+          fontFamily: family,
           fontSize: typography.size[variant] ?? typography.size.body,
           lineHeight:
             typography.lineHeight[variant] ?? typography.lineHeight.body,
-          fontWeight:
-            typography.weight[weight] ??
-            (variant === "display" || variant === "title"
-              ? typography.weight.bold
-              : typography.weight.regular),
           color: resolvedColor,
           textAlign: center ? "center" : undefined,
         },

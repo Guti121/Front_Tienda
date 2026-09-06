@@ -3,10 +3,18 @@ import { Provider, useDispatch, useSelector } from "react-redux";
 import { persistor, store } from "../src/redux/store";
 import { PersistGate } from "redux-persist/integration/react";
 import { useEffect } from "react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import {
+  useFonts,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_700Bold,
+} from "@expo-google-fonts/inter";
 import { getUser } from "../src/auth/session";
 import { setUser } from "../src/redux/userSlice";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
 import { ToastProvider } from "../src/ui/Toast";
+import { queryClient } from "../src/api/queryClient";
 
 // Rehidrata el usuario desde storage a redux UNA sola vez al arrancar (fallback
 // por si redux-persist aún no rehidrató). Antes el useEffect dependía de
@@ -27,67 +35,76 @@ const LoadUser = () => {
 };
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_700Bold,
+  });
+  if (!fontsLoaded) return null;
+
   return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
-        <ThemeProvider>
-          <ToastProvider>
-            <LoadUser />
-            <Stack>
-              {/* Pantalla principal de la aplicación */}
-              <Stack.Screen
-                name="index"
-                options={{ headerShown: false, title: "Inicio" }}
-              />
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider>
+            <ToastProvider>
+              <LoadUser />
+              <Stack>
+                {/* Pantalla principal de la aplicación */}
+                <Stack.Screen
+                  name="index"
+                  options={{ headerShown: false, title: "Inicio" }}
+                />
 
-              {/* Pantalla de Login */}
-              <Stack.Screen
-                name="login"
-                options={{ headerShown: false, title: "Login" }}
-              />
-              <Stack.Screen
-                name="badRequest"
-                options={{ headerShown: false, title: "Bad" }}
-              />
-              <Stack.Screen
-                name="catalog"
-                options={{ presentation: "card", headerShown: false }}
-              />
+                {/* Pantalla de Login */}
+                <Stack.Screen
+                  name="login"
+                  options={{ headerShown: false, title: "Login" }}
+                />
+                <Stack.Screen
+                  name="badRequest"
+                  options={{ headerShown: false, title: "Bad" }}
+                />
+                <Stack.Screen
+                  name="catalog"
+                  options={{ presentation: "card", headerShown: false }}
+                />
 
-              <Stack.Screen
-                name="profile"
-                options={{ headerShown: true, title: " Mi Perfil" }}
-              />
+                <Stack.Screen
+                  name="profile"
+                  options={{ headerShown: true, title: " Mi Perfil" }}
+                />
 
-              {/* Rutas dentro del drawer */}
-              <Stack.Screen name="drawer" options={{ headerShown: false }} />
+                {/* Rutas dentro del drawer */}
+                <Stack.Screen name="drawer" options={{ headerShown: false }} />
 
-              <Stack.Screen
-                name="modals"
-                options={{ presentation: "modal", headerShown: false }}
-              />
+                <Stack.Screen
+                  name="modals"
+                  options={{ presentation: "modal", headerShown: false }}
+                />
 
-              <Stack.Screen
-                name="products"
-                options={{ presentation: "card", headerShown: false }}
-              />
+                <Stack.Screen
+                  name="products"
+                  options={{ presentation: "card", headerShown: false }}
+                />
 
-              <Stack.Screen
-                name="myStoreSettings"
-                options={{ presentation: "card", headerShown: false }}
-              />
+                <Stack.Screen
+                  name="myStoreSettings"
+                  options={{ presentation: "card", headerShown: false }}
+                />
 
-              <Stack.Screen
-                name="billsGenerate"
-                options={{ presentation: "card", headerShown: false }}
-              />
-              <Stack.Screen
-                name="stockTaking"
-                options={{ presentation: "card", headerShown: false }}
-              />
-            </Stack>
-          </ToastProvider>
-        </ThemeProvider>
+                <Stack.Screen
+                  name="billsGenerate"
+                  options={{ presentation: "card", headerShown: false }}
+                />
+                <Stack.Screen
+                  name="stockTaking"
+                  options={{ presentation: "card", headerShown: false }}
+                />
+              </Stack>
+            </ToastProvider>
+          </ThemeProvider>
+        </QueryClientProvider>
       </PersistGate>
     </Provider>
   );

@@ -128,10 +128,11 @@ export const radii = {
 };
 
 export const typography = {
-  // family: undefined -> fuente del sistema. Para usar Inter: cargarla con
-  // expo-font en app/_layout.jsx y poner "Inter" aquí.
-  family: undefined,
-  familyBold: undefined,
+  // Familias por peso. Se cargan con @expo-google-fonts/inter en app/_layout.jsx
+  // (bloquea el render hasta que estén listas, así que siempre existen).
+  family: "Inter_400Regular",
+  familyMedium: "Inter_500Medium",
+  familyBold: "Inter_700Bold",
   size: {
     display: 30,
     title: 22,

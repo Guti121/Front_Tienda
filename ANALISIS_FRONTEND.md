@@ -281,16 +281,35 @@ eso y aporta caché, refetch, y loading/error unificados.
 - [ ] Pendiente: migrar el `theme.jsx` viejo → las pantallas lo siguen usando
       hasta que se reescriban en Fase 3.
 
-### Fase 3 — Rediseño de pantallas
-- [ ] Navegación: **tabs inferiores** para móvil (Facturar · Productos · Inventario ·
-      Catálogo · Más) + drawer solo en web/tablet. Mantener el filtrado por rol.
-- [ ] Rehacer sobre `src/ui/`, pantalla por pantalla: login/registro, home,
-      **facturar (POS)**, productos (lista + alta + detalle + editar), inventario,
-      catálogo público, ajustes de tienda, perfil, QR aliado.
-- [ ] Romper los componentes de 400–650 líneas en subcomponentes + hooks
-      (`useCart`, `useProductSearch`, …).
-- [ ] El **POS de facturar**: flujo de una pantalla → buscar / escanear → carrito
-      (sheet inferior) → confirmar, con feedback claro de stock.
+### Fase 3 — Rediseño de pantallas  · **EN CURSO**
+
+**Incremento 1 (2026-09-06)** — infra + login. Verificado: `expo export --platform
+web` OK + eslint limpio.
+- [x] **React Query**: `@tanstack/react-query` instalado, `src/api/queryClient.js`,
+      `<QueryClientProvider>` en `app/_layout.jsx`.
+- [x] **Fuente Inter** (`@expo-google-fonts/inter`): se carga en `_layout.jsx`
+      (bloquea el render hasta lista), `typography.family/Medium/Bold` la usan.
+- [x] **`src/api/products.js`**: API de productos limpia sobre el cliente único
+      (plantilla para migrar el resto de `axiosRequest.jsx` de feature).
+- [x] **Login + Registro rediseñados** (`app/login.jsx`, `loginView.jsx`,
+      `registerView.jsx`) sobre `src/ui/` — segmented control, `TextField` con
+      iconos y toggle de contraseña, `Button` con loading, errores por campo +
+      `useToast`. Usa `handleLogin/Register` de Fase 1.
+- [x] `.eslintrc.js`: `env: { browser: true }` (RN/Hermes tiene `setTimeout`,
+      `URLSearchParams`, `localStorage` en web).
+
+**Pendiente del incremento:**
+- [ ] Navegación: **tabs inferiores** móvil (Facturar · Productos · Inventario ·
+      Catálogo · Más) + drawer solo web/tablet. Mantener filtrado por rol.
+- [ ] Resto de pantallas sobre `src/ui/` + React Query: home, **POS (facturar)**,
+      productos (lista/alta/detalle/editar), inventario, catálogo público,
+      ajustes de tienda, perfil, QR aliado.
+- [ ] Romper componentes de 400–650 líneas en subcomponentes + hooks
+      (`useCart`, `useProductSearch`).
+- [ ] **POS**: flujo de una pantalla → buscar/escanear → carrito (bottom-sheet)
+      → confirmar, con feedback de stock.
+- [ ] Al migrar todo: borrar `react-native-vector-icons` + `icons.jsx`,
+      `themeStyles/theme.jsx` y los `axiosRequest.jsx` de feature.
 
 ### Fase 4 — Calidad
 - [ ] TS: migración incremental (`allowJs`, por módulo) **o** quitar
