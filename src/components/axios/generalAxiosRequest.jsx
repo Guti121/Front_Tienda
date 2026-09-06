@@ -1,113 +1,44 @@
-import axios from "axios";
-import { deleteTokenStorage, expiredTimeToken } from "../token/token";
-import Storage from "../token/localstorage";
+// Shim de compatibilidad. La implementación real está en src/api/http.js.
+// Las ~29 pantallas que importan de aquí siguen funcionando sin cambios; el
+// token ya NO se pasa por parámetro, lo pone el interceptor.
 import { router } from "expo-router";
-import { showSessionAlert } from "../themeStyles/alerts";
 
-export const baseUrl = "https://api.mystockapp.site/";
+import { API_URL } from "../../api/config";
+import {
+  get,
+  post,
+  patch,
+  del,
+  postForm,
+  ApiError,
+  refreshSession,
+} from "../../api/http";
+import { getAccess, isAccessExpired, clearSession } from "../../auth/session";
 
+export const baseUrl = API_URL;
+export { ApiError };
+
+export const getRequest = get;
+export const postRequest = post;
+export const patchRequest = patch;
+export const deleteRequest = del;
+export const postRequestFormData = postForm;
+
+// Compat: las pantallas hacen `const token = await expiredGetToken()` y luego
+// `if (!token) { ...redirigir }`. Se mantiene ese contrato.
 export const expiredGetToken = async () => {
   try {
-    await expiredTimeToken();
-    const token = await Storage.getItem("token");
+    if (await isAccessExpired()) await refreshSession();
+    const token = await getAccess();
     if (!token) {
-      await deleteTokenStorage();
+      await clearSession();
       router.replace("/login");
+      return null;
     }
     return token;
   } catch {
-    await deleteTokenStorage();
-    showSessionAlert(
-        "Sesión expirada",
-        "Tu sesión ha caducado. Por favor, inicia sesión nuevamente.",
-        () => router.replace("/login")
-      );
+    await clearSession();
     router.replace("/login");
+    return null;
   }
 };
-
-export async function postRequest(url, data, token) {
-  try {
-    const headers = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    };
-    const request = await axios.post(url, data, {
-      headers,
-      withCredentials: true,
-    });
-    return request;
-  } catch (error) {
-    throw error || "Error desconocido";
-  }
-}
-
-export async function getRequest(url, token) {
-
-  try {
-    const headers = {
-      Authorization: `Bearer ${token}`,
-    };
-    const request = await axios.get(url, { headers, withCredentials: true });
-    return request;
-  } catch (error) {
-    const errorMessage =
-      error.response?.data?.error || // Si existe error.response.data.error, úsalo
-      error.response?.data?.detail || // Si no, usa error.response.data.detail
-      error.response?.data || // Si tampoco, usa error.response.data completo
-      "Error desconocido";
-    throw new Error(errorMessage);
-  }
-}
-
-export async function deleteRequest(url, token) {
-
-  try {
-    const headers = { Authorization: `Bearer ${token}` };
-    const request = await axios.delete(url, { headers, withCredentials: true });
-    return request;
-  } catch (error) {const errorMessage =
-    error.response?.data?.error || // Si existe error.response.data.error, úsalo
-    error.response?.data?.detail || // Si no, usa error.response.data.detail
-    error.response?.data || // Si tampoco, usa error.response.data completo
-    "Error desconocido";
-  throw new Error(errorMessage);
-  }
-}
-
-export async function patchRequest(url, data, token) {
-
-  try {
-    const headers = {
-      Authorization: `Bearer ${token}`,
-    };
-    const request = await axios.patch(url, data, {
-      headers,
-      withCredentials: true,
-    });
-    return request;
-  } catch (error) {
-    const errorMessage =
-      error.response?.data?.error || // Si existe error.response.data.error, úsalo
-      error.response?.data?.detail || // Si no, usa error.response.data.detail
-      error.response?.data || // Si tampoco, usa error.response.data completo
-      "Error desconocido";
-    throw new Error(errorMessage);
-  }
-}
-
-
-export async function postRequestFormData(url, data, token) {
-  try {
-    const headers = {
-      Authorization: `Bearer ${token}`,
-    };
-    const request = await axios.post(url, data, {
-      headers,
-      withCredentials: true,
-    });
-    return request;
-  } catch (error) {
-    throw error || "Error desconocido";
-  }
-}

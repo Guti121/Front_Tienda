@@ -1,68 +1,36 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "expo-router";
 import { useSelector } from "react-redux";
-import BadRequest from "../../app/badRequest";
 
-export function useUserCAuthRedirect() {
+const ROLE = {
+  CREATOR: ["creator"],
+  CREATOR_ADMIN: ["creator", "admin"],
+  CREATOR_ADMIN_WORKER: ["creator", "admin", "worker"],
+};
+
+// Redirige si no hay sesión (-> /login) o si el rol no está permitido (-> /badRequest).
+// Antes había 3 hooks idénticos salvo la lista de roles.
+export function useRequireRole(allowedRoles) {
   const router = useRouter();
   const user = useSelector((state) => state.user.user);
-  const [isMounted, setIsMounted] = useState(false);
-
-  // Esperar a que el componente se monte completamente
-  useEffect(() => {
-    setIsMounted(true);
-  }, []); // Se ejecuta una sola vez al montar
+  const mounted = useRef(false);
 
   useEffect(() => {
-    if (!isMounted) return; // Si el componente no ha montado, no hagas nada
+    mounted.current = true;
+  }, []);
 
+  useEffect(() => {
+    if (!mounted.current) return;
     if (!user) {
       router.replace("/login");
-    } else if (!["creator"].includes(user?.typeUser)) {
+    } else if (!allowedRoles.includes(user?.typeUser)) {
       router.replace("/badRequest");
     }
-  }, [user, router, isMounted]);
+  }, [user, router, allowedRoles]);
 }
 
-export function useUserCAAuthRedirect() {
-  const router = useRouter();
-  const user = useSelector((state) => state.user.user);
-  const [isMounted, setIsMounted] = useState(false);
-
-  // Esperar a que el componente se monte completamente
-  useEffect(() => {
-    setIsMounted(true);
-  }, []); // Se ejecuta una sola vez al montar
-
-  useEffect(() => {
-    if (!isMounted) return; // Si el componente no ha montado, no hagas nada
-
-    if (!user) {
-      router.replace("/login");
-    } else if (!["creator", "admin"].includes(user?.typeUser)) {
-      router.replace("/badRequest");
-    }
-  }, [user, router, isMounted]);
-}
-
-
-export function useUserCAWAuthRedirect() {
-  const router = useRouter();
-  const user = useSelector((state) => state.user.user);
-  const [isMounted, setIsMounted] = useState(false);
-
-  // Esperar a que el componente se monte completamente
-  useEffect(() => {
-    setIsMounted(true);
-  }, []); // Se ejecuta una sola vez al montar
-
-  useEffect(() => {
-    if (!isMounted) return; // Si el componente no ha montado, no hagas nada
-
-    if (!user) {
-      router.replace("/login");
-    } else if (!["creator", "admin", "worker"].includes(user?.typeUser)) {
-      router.replace("/badRequest");
-    }
-  }, [user, router, isMounted]);
-}
+// Alias de compatibilidad (nombres usados por las pantallas actuales).
+export const useUserCAuthRedirect = () => useRequireRole(ROLE.CREATOR);
+export const useUserCAAuthRedirect = () => useRequireRole(ROLE.CREATOR_ADMIN);
+export const useUserCAWAuthRedirect = () =>
+  useRequireRole(ROLE.CREATOR_ADMIN_WORKER);

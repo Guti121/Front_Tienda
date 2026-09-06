@@ -1,41 +1,25 @@
-import { router, Stack, useRouter } from "expo-router";
+import { Stack } from "expo-router";
 import { Provider, useDispatch, useSelector } from "react-redux";
 import { persistor, store } from "../src/redux/store";
 import { PersistGate } from "redux-persist/integration/react";
 import { useEffect } from "react";
-import Storage from "../src/components/token/localstorage";
+import { getUser } from "../src/auth/session";
 import { setUser } from "../src/redux/userSlice";
 
-//hacemos un funcion para recuperar el tipo de usuario y almacenarlo en redux
-
-// Recuperar usuario almacenado
-
+// Rehidrata el usuario desde storage a redux UNA sola vez al arrancar (fallback
+// por si redux-persist aún no rehidrató). Antes el useEffect dependía de
+// `userRedux` y podía re-ejecutarse en bucle.
 const LoadUser = () => {
-  const dispatch = useDispatch(); // 
-  const userRedux = useSelector((state) => state.user.user);
+  const dispatch = useDispatch();
+  const hasUser = useSelector((state) => !!state.user.user);
 
   useEffect(() => {
-    const loadU = async () => {
-      try {
-        const storedUser = await Storage.getItem("user");
-
-        if (storedUser) {
-          const parsedUser = JSON.parse(storedUser);
-     
-          if (
-            !userRedux ||
-            JSON.stringify(userRedux) !== JSON.stringify(parsedUser)
-          ) {
-            dispatch(setUser(parsedUser));
-          }
-        }
-      } catch (error) {
-        router.replace("/login");
-      }
-    };
-
-    loadU();
-  }, [dispatch, userRedux]); 
+    if (hasUser) return;
+    getUser().then((u) => {
+      if (u) dispatch(setUser(u));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return null;
 };
@@ -44,7 +28,6 @@ export default function RootLayout() {
   return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
-        
         <LoadUser />
         <Stack>
           {/* Pantalla principal de la aplicación */}
@@ -85,7 +68,6 @@ export default function RootLayout() {
             options={{ presentation: "card", headerShown: false }}
           />
 
-          
           <Stack.Screen
             name="myStoreSettings"
             options={{ presentation: "card", headerShown: false }}

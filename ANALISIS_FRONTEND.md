@@ -226,20 +226,36 @@ eso y aporta caché, refetch, y loading/error unificados.
       en `.gitignore` y no trackeado.
 - [x] `.env.example` con `EXPO_PUBLIC_API_URL` (para Fase 1).
 
-### Fase 1 — Capa de datos y auth
-- [ ] **`src/api/client.js`**: instancia axios con `baseURL` de env, **interceptor
-      request** (Authorization desde storage), **interceptor response**
-      (`401 → refresh 1 vez → retry`; si falla → `clearSession()` + `/login`).
-      Sin `withCredentials`. Errores normalizados a `ApiError { status, message, fields }`.
-- [ ] Quitar el parámetro `token` de todos los `handleXxx` — que solo construyan
-      URL + payload. Unificar los ~7 `axiosRequest.jsx` en `src/api/<feature>.js`.
-- [ ] **`src/auth/session.js`**: save/load/clear atómico, una sola convención de
-      claves. Arreglar bugs (`keyUser`, `time` vs `tokenExpiration`, `catch` sin `e`,
-      `handleLogin` con error de red).
-- [ ] **Un guard**: `app/(app)/_layout.jsx` exige sesión; `viewsPermissions` → un
-      hook `useRequireRole(roles)`.
-- [ ] **RTK Query** o **@tanstack/react-query** para el estado de servidor →
-      borra los `useState/useFocusEffect/debounce/paginación` repetidos.
+### Fase 1 — Capa de datos y auth  · **NÚCLEO HECHO (2026-09-06)**
+- [x] **`src/api/http.js`**: instancia axios (`baseURL` de `EXPO_PUBLIC_API_URL`,
+      fallback a la URL actual), **interceptor request** (mete `Authorization`,
+      refresca preventivamente si el access venció, respeta `skipAuth`),
+      **interceptor response** (`401 → refresh 1 vez, dedupe con promesa
+      compartida → retry`; si falla → `clearSession()` + `/login`). **Sin
+      `withCredentials`.** Errores normalizados a `ApiError { status, message,
+      fields, raw }`. `refreshSession()` usa axios crudo (no recursión).
+- [x] **`src/auth/session.js`**: `saveSession / getAccess / getRefresh / getUser /
+      getAccessExp / isAccessExpired / clearSession`, **una sola convención de
+      claves** (se conservan las claves existentes → sin migración ni logout al
+      desplegar). Arreglados los bugs: `"keyUser"` literal, `"time"` vs
+      `"tokenExpiration"`, `catch` sin `e`, `handleLogin` que crasheaba con error
+      de red.
+- [x] **`viewsPermissions.jsx`** → un solo `useRequireRole(roles)` + los 3
+      nombres viejos como alias.
+- [x] `app/_layout.jsx::LoadUser`: `useEffect` con deps `[]` (una vez) en vez de
+      `[userRedux]` → sin riesgo de bucle.
+- [x] **Shim de compatibilidad** (`generalAxiosRequest.jsx`, `token.jsx`,
+      `localstorage.jsx`): `getRequest/postRequest/…`, `expiredGetToken`,
+      `deleteTokenStorage`, `expiredTimeToken`, `Storage`, `isWeb` siguen
+      exportándose → las ~29 pantallas **no se tocaron**. El `token` que pasan
+      se ignora.
+- [x] `sesion/axiosRequest.jsx`: `handleLogin/Logout/Register` sobre el cliente
+      nuevo, con `skipAuth`.
+- [ ] **Pendiente (limpieza)**: unificar los ~7 `axiosRequest.jsx` de feature en
+      `src/api/<feature>.js` y quitar el `token` + los `expiredGetToken()` de las
+      52 pantallas. Se hará junto con Fase 3 (reescritura de pantallas).
+- [ ] **RTK Query / @tanstack/react-query**: diferido a Fase 3 (reescribe el
+      fetching de cada pantalla).
 
 ### Fase 2 — Sistema de diseño (base del rediseño)
 - [ ] **`src/theme/tokens.js`**: `colors` (escala neutra + de marca + semánticos

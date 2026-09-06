@@ -61,7 +61,7 @@ export default function FormRegister() {
     setPassword(password);
     if (!validatePassword(password)) {
       setError(
-        "La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un carácter especial."
+        "La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un carácter especial.",
       );
     } else {
       cleanErrors();
@@ -84,8 +84,10 @@ export default function FormRegister() {
         setValidate("¡Usuario creado con éxito!");
       }
     } catch (error) {
-      setUsernameError(error.response?.data?.username || false);
-      setEmailError(error.response?.data?.email || false);
+      // http.js normaliza los errores de campo del backend en error.fields
+      const fields = error?.fields || error?.response?.data || {};
+      setUsernameError(fields.username || false);
+      setEmailError(fields.email || false);
       setError("Verifique los datos ingresados");
     }
   };
@@ -200,7 +202,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor:theme.colors.backgroundColor,
+    backgroundColor: theme.colors.backgroundColor,
   },
   form: {
     flex: 1,
