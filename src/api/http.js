@@ -43,8 +43,13 @@ function toApiError(error) {
   let fields;
   if (typeof d === "string") {
     message = d;
-  } else if (d?.error) {
-    message = typeof d.error === "string" ? d.error : JSON.stringify(d.error);
+  } else if (d?.error && typeof d.error === "string") {
+    message = d.error;
+  } else if (d?.error && typeof d.error === "object") {
+    // p. ej. validación de stock: { error: [...], producto_nombre: [...], ... }
+    fields = d.error;
+    const e = d.error.error;
+    message = Array.isArray(e) ? e.join(" · ") : e || "Ocurrió un error.";
   } else if (d?.detail) {
     message = d.detail;
   } else if (d && typeof d === "object") {

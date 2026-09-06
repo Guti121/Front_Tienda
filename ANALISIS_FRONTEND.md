@@ -317,14 +317,37 @@ web` OK + eslint limpio.
 - Nota: `src/components/customDrawer.jsx` queda huérfano (se borra al limpiar
   en el último incremento).
 
+**Incremento 3 (2026-09-06)** — POS / Facturar. Verificado: `expo export
+--platform web` OK + eslint limpio.
+- [x] **`src/hooks/useCart.js`** (nuevo): estado del carrito sobre el storage
+      (`arrayCar`, misma clave/forma de item). `items/count/total`, `add`,
+      `setQty`, `remove`, `clear`, recarga en `useFocusEffect`. Suma cantidad si
+      el producto ya está. Helpers sueltos `readCart/writeCart/addToCart`.
+- [x] **`src/api/billing.js`** (nuevo): `createInvoice(detalles)`,
+      `lookupBarcodeText`, `lookupBarcodeImage` sobre el cliente único.
+- [x] **`src/components/billing/bill.jsx`** reescrito (537→~250 líneas) sobre
+      `src/ui/` + React Query (`useQuery` con debounce 400ms → `searchAvailable
+      Products`). Grid de `Card` con imagen/precio/stock (`Badge`), tap → `Sheet`
+      con `Stepper` (tope = stock) → `add` + `toast`. FAB carrito con badge de
+      `count`. Sin `Modal` casero, sin `theme.jsx`/`icons.jsx`. Mantiene
+      `getArrayCar` exportado (compat con `modalBarCode.jsx`).
+- [x] **`src/components/billing/modalCar.jsx`** reescrito (407→~210 líneas)
+      sobre `src/ui/`: filas `Card` con `Stepper`+eliminar, `Card` de totales
+      fija, `Limpiar`/`Facturar`, confirmación en `Sheet`, error de stock
+      inline (`Badge`) + `toast`. Usa `createInvoice` + `useCart`.
+- [x] **`src/ui/Sheet.jsx`** + **`src/ui/Stepper.jsx`** (nuevos) + barrel.
+- [x] **`src/api/http.js`**: `toApiError` ahora expone `d.error` como `fields`
+      cuando es objeto (validación de stock) y arma un mensaje legible.
+- Nota: `src/components/billing/axiosRequest.jsx` sigue vivo (lo usa
+  `modalBarCode.jsx`); se borra cuando se rediseñe el escáner.
+
 **Pendiente del incremento:**
-- [ ] Resto de pantallas sobre `src/ui/` + React Query: **POS (facturar)**,
-      productos (lista/alta/detalle/editar), inventario, catálogo público,
-      ajustes de tienda, perfil, QR aliado.
-- [ ] Romper componentes de 400–650 líneas en subcomponentes + hooks
-      (`useCart`, `useProductSearch`).
-- [ ] **POS**: flujo de una pantalla → buscar/escanear → carrito (bottom-sheet)
-      → confirmar, con feedback de stock.
+- [ ] Resto de pantallas sobre `src/ui/` + React Query: productos
+      (lista/alta/detalle/editar), inventario, catálogo público, ajustes de
+      tienda, perfil, QR aliado, **escáner de código de barras** (`modalBarCode`,
+      quitar `react-webcam` → `expo-camera`/`expo-image-picker`).
+- [ ] Romper el resto de componentes de 400–650 líneas + hooks
+      (`useProductSearch`).
 - [ ] Al migrar todo: borrar `react-native-vector-icons` + `icons.jsx`,
       `themeStyles/theme.jsx` y los `axiosRequest.jsx` de feature.
 

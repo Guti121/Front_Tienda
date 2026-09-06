@@ -1,537 +1,256 @@
-import { useCallback, useEffect, useState } from "react";
-import {
-  Text,
-  TextInput,
-  View,
-  FlatList,
-  StyleSheet,
-  Dimensions,
-  Pressable,
-  Modal,
-  Alert,
-  Platform,
-  SafeAreaView,
-  ActivityIndicator,
-  Image,
-} from "react-native";
-import { handleListProductFilter } from "./axiosRequest";
-import theme, { height, width } from "../themeStyles/theme";
-import {
-  checkIcon,
-  iconBarCode,
-  iconCar,
-  iconMinus,
-  iconPlus,
-} from "../icons/icons";
-import { useFocusEffect, useRouter } from "expo-router";
-import Storage from "../token/localstorage";
-import { expiredGetToken } from "../axios/generalAxiosRequest";
-import { deleteTokenStorage } from "../token/token";
-import { BarNotification } from "../icons/barNotification";
-import { pesosFormat } from "../icons/functionFormat";
-import { useUserCAWAuthRedirect } from "../../redux/viewsPermissions";
+import { useEffect, useMemo, useState } from "react";
+import { FlatList, Image, Pressable, View } from "react-native";
+import { useRouter } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
 
-// Agregar un debounce
-let timeout;
+import { searchAvailableProducts } from "../../api/products";
+import { addToCart, useCart } from "../../hooks/useCart";
+import { useTheme } from "../../theme/ThemeProvider";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Icon,
+  Loader,
+  Screen,
+  Sheet,
+  Stepper,
+  Text,
+  TextField,
+  useToast,
+} from "../../ui";
+import { pesosFormat } from "../icons/functionFormat";
+
+const FALLBACK_IMG =
+  "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
 
 export default function Bill() {
-  const [productFilter, setProductFilter] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  //hook para guardar la lista
-  const [arrayProducts, setArrayProducts] = useState(null);
-  //hook icon pressable
-  const [productPressed, setProductPressed] = useState(null);
-  const [nombreProductPressed, setNombreProductPressed] = useState(null);
-  const [valorProductPressed, setValorProductPressed] = useState(null);
-  const [detalles, setDetalles] = useState([]);
-  //hook pressable car
-  const [isPressed, setIsPressed] = useState(false);
-  //hook notification
-  const [notification, setNotification] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [emptyCar, setEmptyCar] = useState(false);
-
-  //router modal
-
   const router = useRouter();
+  const toast = useToast();
+  const { colors, spacing, radii } = useTheme();
+  const { count, add } = useCart();
 
-  const filterQuery = async () => {
-    if (!productFilter) return; // Si el filtro está vacío, no hacer la solicitud
+  const [query, setQuery] = useState("");
+  const [debounced, setDebounced] = useState("");
+  const [selected, setSelected] = useState(null); // producto para el Sheet
+  const [qty, setQty] = useState(1);
 
-    try {
-      setLoading(true);
-      setError(null);
-      const token = await expiredGetToken();
-      if (!token) {
-        deleteTokenStorage();
-        router.replace("/login");
-        return;
-      }
-      let request = await handleListProductFilter(productFilter, token);
-      if (!request) {
-        setArrayProducts(null);
-        setError("No se encontraron productos");
-      } else {
-        
-        setArrayProducts(request);
-      }
-    } catch (error) {
-      setArrayProducts(null);
-      setError(error);
-      console.error("desde error console:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(query.trim()), 400);
+    return () => clearTimeout(t);
+  }, [query]);
 
-  useFocusEffect(
-    useCallback(() => {
-      clearTimeout(timeout);
+  const { data, isFetching, isError } = useQuery({
+    queryKey: ["products", "available", debounced],
+    queryFn: () => searchAvailableProducts(debounced),
+    enabled: debounced.length > 0,
+  });
 
-      timeout = setTimeout(() => {
-        filterQuery();
-      }, 500); // Espera 500ms después de que el usuario deje de escribir
-      return () => clearTimeout(timeout); // Limpiar timeout si el componente se desmonta o `productFilter` cambia
-    }, [productFilter]),
+  const products = useMemo(
+    () => (Array.isArray(data) ? data : (data?.results ?? [])),
+    [data],
   );
 
-  const onpressedIn = (id, nombre, valor) => {
-    setProductPressed(id);
-    setNombreProductPressed(nombre);
-    setValorProductPressed(valor);
-    setModalVisible(true);
-    setTimeout(() => {
-      setProductPressed(null); // Restablece el estado después de 5 ms
-    }, 200);
+  const openProduct = (item) => {
+    setSelected(item);
+    setQty(1);
   };
 
-  const closeModal = () => {
-    setModalVisible(false); // Cierra el modal
+  const confirmAdd = async () => {
+    await add(
+      {
+        producto: selected.id,
+        nombrePro: selected.nombre,
+        valorPro: selected.valor,
+      },
+      qty,
+    );
+    toast.success(`${selected.nombre} · ${qty} u. en el carrito`);
+    setSelected(null);
   };
 
-  const onPressAddCar = (details) => {
-    const producto = details.producto;
-    const cantidad = details.cantidad;
-    const valorPro = details.valorProducto;
-    const nombrePro = details.nombre;
-    if (cantidad > 0) {
-      getArrayCar(producto, cantidad, valorPro, nombrePro);
-      setModalVisible(false);
-      setNotification(true);
-      setTimeout(() => {
-        setNotification(false);
-      }, 1500);
-    } else {
-      Alert.alert("No se pudo agregar al carrito");
-    }
-  };
-  const openModal = () => {
-    router.push("/modals/modalBarCode");
+  const renderItem = ({ item }) => {
+    const uri = item?.imagen_principal?.trim()
+      ? item.imagen_principal
+      : FALLBACK_IMG;
+    const sinStock = !item.unidades_disponibles;
+    return (
+      <Pressable
+        onPress={() => openProduct(item)}
+        disabled={sinStock}
+        style={{ width: "48%", opacity: sinStock ? 0.5 : 1 }}
+      >
+        <Card level={1} padded={false} style={{ overflow: "hidden" }}>
+          <Image
+            source={{ uri }}
+            style={{ width: "100%", height: 140, resizeMode: "cover" }}
+          />
+          <View style={{ padding: spacing.md, gap: spacing.xs }}>
+            <Text weight="medium" numberOfLines={1}>
+              {item.nombre}
+            </Text>
+            <Text weight="bold" color="primary">
+              {pesosFormat(item.valor)}
+            </Text>
+            <View
+              style={{ flexDirection: "row", justifyContent: "space-between" }}
+            >
+              <Badge
+                label={`${item.unidades_disponibles} u.`}
+                tone={item.unidades_disponibles > 3 ? "success" : "warning"}
+              />
+              <Text variant="caption" muted>
+                #{item.numero_producto}
+              </Text>
+            </View>
+          </View>
+        </Card>
+      </Pressable>
+    );
   };
 
-  // se realiza esta funcion para verificar si el carro esta vacio y asi saber si debe notificarse
-  useFocusEffect(() => {
-    empty();
-  });
-  // se realiza esta funcion para verificar si el carro esta vacio y asi saber si debe notificarse
-
-  const empty = async () => {
-    const result = await Storage.getItem("arrayCar");
-    if (result && JSON.parse(result).length > 0) {
-      setEmptyCar(true);
-    } else {
-      setEmptyCar(false);
-    }
-  };
-
-  
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <View
+    <Screen padded={false}>
+      <View style={{ padding: spacing.lg, paddingBottom: spacing.sm }}>
+        <TextField
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Buscar producto"
+          left={<Icon name="magnify" size={20} color={colors.textMuted} />}
+          right={
+            <Icon
+              name="barcode-scan"
+              size={22}
+              color={colors.primary}
+              onPress={() => router.push("/modals/modalBarCode")}
+            />
+          }
+        />
+      </View>
+
+      {isFetching && products.length === 0 ? <Loader fill={false} /> : null}
+
+      <FlatList
+        data={products}
+        numColumns={2}
+        keyExtractor={(item) => String(item.id)}
+        columnWrapperStyle={{
+          justifyContent: "space-between",
+          paddingHorizontal: spacing.lg,
+        }}
+        contentContainerStyle={{ gap: spacing.md, paddingBottom: 120 }}
+        keyboardShouldPersistTaps="handled"
+        ListEmptyComponent={
+          isFetching ? null : (
+            <View style={{ padding: spacing.xl }}>
+              <EmptyState
+                icon={isError ? "alert-circle-outline" : "magnify"}
+                title={
+                  isError
+                    ? "No se pudo buscar"
+                    : debounced
+                      ? "Sin resultados"
+                      : "Busca un producto"
+                }
+                message={
+                  isError
+                    ? "Revisa tu conexión e inténtalo de nuevo."
+                    : debounced
+                      ? "Prueba con otro nombre o número."
+                      : "Escribe el nombre o escanea el código de barras."
+                }
+              />
+            </View>
+          )
+        }
+        renderItem={renderItem}
+      />
+
+      {/* FAB carrito */}
+      <Pressable
+        onPress={() => router.push("/modals/modalCarDrawer")}
         style={{
-          flex: 1,
-          backgroundColor: { ...theme.backgroundColorPrincipal },
-          padding:5,
-          
+          position: "absolute",
+          right: spacing.lg,
+          bottom: spacing.xl,
+          width: 60,
+          height: 60,
+          borderRadius: radii.pill,
+          backgroundColor: colors.primary,
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
-        {notification && (
-          <BarNotification
-            icon={checkIcon()}
-          />
-        )}
-        <View style={styles.containerFilter}>
+        <Icon name="cart-outline" size={26} color={colors.textOnBrand} />
+        {count > 0 ? (
           <View
             style={{
-              
-              flexDirection: "row",
+              position: "absolute",
+              top: -2,
+              right: -2,
+              minWidth: 22,
+              height: 22,
+              paddingHorizontal: 4,
+              borderRadius: radii.pill,
+              backgroundColor: colors.danger,
               alignItems: "center",
+              justifyContent: "center",
+              borderWidth: 2,
+              borderColor: colors.bg,
             }}
           >
-            <TextInput
-              style={styles.textInputProducts}
-              value={productFilter}
-              placeholder="Buscar Productos"
-              placeholderTextColor="#454545"
-              onChangeText={(text) => setProductFilter(text)}
-            />
-            <Pressable
-              style={{
-                ...theme.shadow,
-                borderRadius: 50,
-                margin: 5,
-                padding: 10,
-                backgroundColor: "rgba(0,0,0,0.05)",
-              }}
-              onPress={openModal}
-            >
-              {iconBarCode}
-            </Pressable>
+            <Text variant="caption" weight="bold" color={colors.textOnBrand}>
+              {count}
+            </Text>
           </View>
-        </View>
+        ) : null}
+      </Pressable>
 
-        {loading && <ActivityIndicator size="small" color="black" />}
-        {error && (
-          <Text style={{ ...theme.errorText, fontSize: 15 }}>{error}</Text>
-        )}
-        <FlatList
-          style={styles.containerFlatlist}
-          data={arrayProducts}
-          numColumns={2}
-          renderItem={({ item }) => {  
-            const imageUri = item?.imagen_principal?.trim()
-              ? item.imagen_principal
-              : "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
-          return(
-            
-            <Pressable
-              style={[
-                styles.containerProduct,
-                productPressed === item.id && styles.productPressedStyle,
-              ]}
-              onPress={() => {
-                onpressedIn(item.id, item.nombre, item.valor);
-              }}
+      <Sheet
+        visible={!!selected}
+        onClose={() => setSelected(null)}
+        title={selected?.nombre ?? ""}
+      >
+        {selected ? (
+          <>
+            <View
+              style={{ flexDirection: "row", justifyContent: "space-between" }}
             >
-              
-              <Image
-                source={{ uri:imageUri }}
-                  style={{ width:'90%', height: 250, resizeMode: "cover" }}
-              />
-             
-              <View style={styles.containerText}>
-
-              <Text numberOfLines={1} ellipsizeMode="tail"  style={styles.textProductsTitle}>{item.nombre}</Text>          
-              <Text style={styles.textProducts}>
-                  {pesosFormat(item.valor)}
-              </Text>
-                  <Text style={styles.textProducts}>
-                    {item.unidades_disponibles}-Unid
-                  </Text>
-              <Text style={styles.textProducts}>Tipo {item.tipo_producto}</Text>
-
-              </View>
-              <Text style={{ ...theme.textNames }}>
-                # {item.numero_producto}
-              </Text>
-            </Pressable>
-          )}}
-          keyExtractor={(item) => item.id.toString()} // Convierte `id` en string si es un número
-        />
-        <Pressable
-          style={isPressed ? styles.pressedCar : styles.pressableCar}
-          onPressIn={() => {
-            setIsPressed(true), router.push("/modals/modalCarDrawer");
-          }}
-          onPressOut={() => setIsPressed(false)}
-        >
-          {iconCar()}
-          {emptyCar && (
+              <Text muted>Precio unitario</Text>
+              <Text weight="bold">{pesosFormat(selected.valor)}</Text>
+            </View>
             <View
               style={{
-                width: 20,
-                height: 20,
-                backgroundColor: "red",
-                borderRadius: 50,
-                position: "absolute",
-                top: -5,
-                right: 0,
-                paddingHorizontal: 8,
-                paddingVertical: 2,
+                flexDirection: "row",
+                justifyContent: "space-between",
                 alignItems: "center",
-                justifyContent: "center",
-                ...theme.shadow,
-              }}
-            ></View>
-          )}
-        </Pressable>
-
-        <ModalContainer
-          idProduct={productPressed}
-          nombreProductPress={nombreProductPressed}
-          valorProductPressed={valorProductPressed}
-          state={modalVisible}
-          onClose={closeModal}
-          onPressAdd={onPressAddCar}
-        />
-      </View>
-    </SafeAreaView>
-  );
-}
-
-// Se realiza esta funcion para ingresar al localStorage los productos, se exporta ya que se debe utilizar en modalBarCode.jsx
-export const getArrayCar = async (producto, cantidad, valorPro, nombrePro) => {
-  try {
-    const arrayResult = await Storage.getItem("arrayCar");
-    const array = arrayResult ? JSON.parse(arrayResult) : [];
-    const newDetails = [...array, { producto, nombrePro, cantidad, valorPro }];
-    await Storage.setItem("arrayCar", JSON.stringify(newDetails));
-  } catch {
-    console.error("Error al agregar detalle:", error);
-  }
-};
-
-//modal para indicar la cantidad del producto que se desean agregar al arrayCar
-function ModalContainer({
-  idProduct,
-  nombreProductPress,
-  valorProductPressed,
-  state,
-  onClose,
-  onPressAdd,
-}) {
-  // Hook modal state
-  const [modalProduct, setModalProduct] = useState(state);
-  //hook contador
-  const [count, setCount] = useState(1);
-  const [product, setProduct] = useState(null);
-  const [nombreProduct, setNombreProduct] = useState(null);
-
-  const details = {
-    producto: product,
-    nombre: nombreProduct,
-    cantidad: count,
-    valorProducto: valorProductPressed,
-  };
-  // Actualiza el estado cuando el prop `state` cambia
-  useEffect(() => {
-    setModalProduct(state);
-    setProduct(idProduct);
-    setNombreProduct(nombreProductPress);
-  }, [state]);
-
-  //funcion para incrementar el numero de productos en el modal
-  const plusCount = () => {
-    setCount((count) => count + 1);
-  };
-  const minusCount = () => {
-    setCount((count) => (count > 0 ? count - 1 : 0));
-  };
-
-  return (
-    <Modal animationType="fade" transparent={true} visible={modalProduct}>
-      <View style={styles.modalStyle}>
-        <View style={styles.modal}>
-          <View style={styles.headModal}>
-            <Text numberOfLines={1} ellipsizeMode="tail" style={styles.textProductsTitle}>{nombreProduct}</Text>
-            <Text style={styles.textProducts}>Cantidad</Text>
-          </View>
-          <View style={styles.containerCount}>
-            <Pressable onPress={minusCount}>{iconMinus()}</Pressable>
-
-            <Text style={styles.textCount}>{count}</Text>
-            <Pressable onPress={plusCount}>{iconPlus()}</Pressable>
-          </View>
-          <View style={{ flexDirection: "row" }}>
-            {count > 0 ? (
-              <Pressable
-                style={{
-                  ...theme.pressable,
-                  margin: 10,
-                  paddingHorizontal: 20,
-                }}
-                onPress={() => {
-                  onPressAdd(details), setCount(1);
-                }}
-              >
-                <Text style={{ ...theme.textPressable }}>Agregar</Text>
-              </Pressable>
-            ) : null}
-            <Pressable
-              style={{ ...theme.pressable, margin: 10, paddingHorizontal: 25 }}
-              onPress={() => {
-                onClose(), setCount(0);
               }}
             >
-              <Text style={{ ...theme.textPressable }}>Cerrar</Text>
-            </Pressable>
-          </View>
-        </View>
-      </View>
-    </Modal>
+              <Text muted>Cantidad</Text>
+              <Stepper
+                value={qty}
+                onChange={setQty}
+                max={selected.unidades_disponibles}
+              />
+            </View>
+            <View
+              style={{ flexDirection: "row", justifyContent: "space-between" }}
+            >
+              <Text muted>Subtotal</Text>
+              <Text weight="bold" color="primary">
+                {pesosFormat(Number(selected.valor) * qty)}
+              </Text>
+            </View>
+            <Button title="Agregar al carrito" onPress={confirmAdd} />
+          </>
+        ) : null}
+      </Sheet>
+    </Screen>
   );
 }
 
-
-const styles = StyleSheet.create({
-  //Views containers
-  containerFilter: {
-    ...theme.textInputGlobal,
-    ...theme.backgroundColorPrincipal,
-    ...theme.shadow,
-    borderWidth: 1,
-    margin: 5,
-    height:'auto',
-    width:'auto',
-    alignItems: "center",
-  },
-
-  containerFlatlist: {
-    height: "100%",
-    width: "100%"
-    
-  },
-  containerProduct: {
-    ...theme.shadow,
-    alignItems:'center',
-    justifyContent:'center',
-    margin: 5,
-    width:'49%',
-    paddingHorizontal:10,
-    paddingVertical:30,
-    borderRadius: 10,
-
-    ...theme.backgroundColorPrincipal,
-  },
- 
-  containerText: {
-    width:'100%',
-    flexDirection: "column",
-  },
-
-  //Text
-  textFilter: {
-    ...theme.textNormal,
-    margin: 5,
-    fontSize: 18,
-  },
-  textProductsTitle: {
-    ...theme.textTitle,
-    marginTop: 5,
-    padding: 2,
-    fontSize:15,
-  },
-  textProductsSubTitle: {
-    ...theme.textTitle,
-    marginTop: 5,
-    padding: 2,
-    fontSize: 15,
-  },
-  textProducts: {
-    ...theme.textNames,
-    fontSize: 13,
-    margin: 5,
-  },
-
-  textPressed: {
-    ...theme.textPressable,
-  },
-  //TextInput
-  textInputProducts: {
-    ...theme.textInputGlobal,
-
-    padding: 5,
-    margin: 10,
-    height: height * 0.05,
-    width: width * 0.7,
-  },
-
-  //icons
-  productPressedStyle: {
-    borderColor: "#a6acaf",
-    ...theme.shadow,
-  },
-
-  //-------------------------MODAL---------------------------
-  modalStyle: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)", // semi-transparent background
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  modal: {
-    backgroundColor: "white",
-
-    borderRadius: 8,
-    width: "80%",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-
-  headModal: {
-    alignItems: "center",
-    marginBottom: 10,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    width: "100%",
-    borderColor: "#d0d0d0",
-  },
-
-  containerCount: {
-    ...theme.textInputGlobal,
-    height:'auto',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    flexDirection: "row",
-  },
-  
-  textCount: {
-    marginVertical: 5,
-    marginHorizontal: 20,
-  },
-
-  //--------------------------CAR----------------------------------------
-  pressableCar: {
-    shadowColor: "#454545",
-    shadowOffset: {
-      width: 2,
-      height: 2,
-    },
-    shadowRadius: 20,
-    shadowOpacity: 0.9,
-    backgroundColor: "rgba(0,0,0,0.05)",
-    width: 70,
-    height: 70,
-    position: "absolute",
-    alignItems: "center",
-    justifyContent: "center",
-    top: Platform.OS == "web" ? height * 0.76 : height * 0.76,
-    left: Platform.OS == "web" ? width * 0.03 : width * 0.8,
-    borderRadius: 50,
-  },
-
-  pressedCar: {
-    shadowColor: "#454545",
-    shadowOffset: {
-      width: 2,
-      height: 2,
-    },
-    shadowRadius: 20,
-    shadowOpacity: 0.9,
-    backgroundColor: "#a6acaf",
-    width: 70,
-    height: 70,
-    position: "absolute",
-    alignItems: "center",
-    justifyContent: "center",
-    top: Platform.OS == "web" ? height * 0.76 : height * 0.76,
-    left: Platform.OS == "web" ? width * 0.03 : width * 0.8,
-    borderRadius: 50,
-  },
-});
+// Compat: modalBarCode.jsx importa `getArrayCar` desde aquí.
+export const getArrayCar = async (producto, cantidad, valorPro, nombrePro) => {
+  await addToCart({ producto, nombrePro, valorPro }, cantidad);
+};

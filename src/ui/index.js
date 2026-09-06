@@ -9,4 +9,6 @@ export { EmptyState } from "./EmptyState";
 export { Divider } from "./Divider";
 export { Icon } from "./Icon";
 export { ListItem } from "./ListItem";
+export { Sheet } from "./Sheet";
+export { Stepper } from "./Stepper";
 export { ToastProvider, useToast } from "./Toast";
