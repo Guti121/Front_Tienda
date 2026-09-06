@@ -13,14 +13,12 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~4.0.0",
-    "@react-native-community/masked-view": "^0.1.11",
     "@react-navigation/drawer": "^7.1.2",
     "@react-navigation/native": "^7.0.15",
     "@reduxjs/toolkit": "^2.5.1",
     "@types/react": "~18.3.12",
     "axios": "^1.7.7",
     "expo": "~52.0.38",
-    "expo-barcode-scanner": "~13.0.1",
     "expo-camera": "~16.0.18",
     "expo-constants": "~17.0.8",
     "expo-file-system": "~18.0.12",
@@ -46,9 +44,7 @@
     "react-native-screens": "~4.4.0",
     "react-native-vector-icons": "^10.2.0",
     "react-native-web": "^0.19.13",
-    "react-qr-barcode-scanner": "^2.0.0",
     "react-redux": "^9.2.0",
-    "react-scripts": "^5.0.1",
     "react-webcam": "^7.2.0",
     "redux-persist": "^6.0.0",
     "typescript": "^5.3.3",
@@ -69,8 +65,7 @@
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-native": "^4.1.0",
-    "prettier": "^3.5.3",
-    "typescript": "^4.9.5"
+    "prettier": "^3.5.3"
   },
   "private": true
 }
