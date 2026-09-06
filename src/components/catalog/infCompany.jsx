@@ -14,7 +14,7 @@ export const CompanyInfoRequest = ({ info }) => {
         alignItems: 'center',
         padding: 20,
         gap: 20,
-        backgroundColor: '#121212',
+        backgroundColor: '#f8f9fa',
       }}
     >
       <Image
@@ -24,7 +24,11 @@ export const CompanyInfoRequest = ({ info }) => {
           height: 100,
           borderRadius: 50,
           borderWidth: 2,
-          borderColor: '#444',
+          borderColor: '#e0e0e0',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
         }}
         resizeMode="cover"
       />
@@ -35,17 +39,17 @@ export const CompanyInfoRequest = ({ info }) => {
             fontSize: 20,
             fontWeight: 'bold',
             textTransform: 'uppercase',
-            color: '#fff',
+            color: '#222222',
           }}
         >
           {info?.company || "Nombre de la Empresa"}
         </Text>
 
-        <Text style={{ fontSize: 12, color: '#bbb' }}>
+        <Text style={{ fontSize: 12, color: '#666666' }}>
           {info?.name || "Nombre del representante"}
         </Text>
 
-        <Text style={{ fontSize: 16, color: '#bbb' }}>
+        <Text style={{ fontSize: 16, color: '#666666' }}>
           {info?.municipality || "Municipio Desconocido"}
         </Text>
       </View>

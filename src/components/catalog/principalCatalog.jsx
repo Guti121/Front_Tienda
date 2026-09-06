@@ -15,7 +15,7 @@ import { catalogRequest, companyInfoRequest, typeProductRequest } from "./axiosR
 import { useEffect, useRef, useState } from "react";
 import { CompanyInfoRequest } from "./infCompany";
 import { pesosFormat } from "../icons/functionFormat";
-import ProductTypeFilter from "./componentsPrincipalView/filterPView";
+import { FilterToggleButton, FilterSidebar } from "./componentsPrincipalView/filterPView";
 import { iconCar } from "../icons/icons";
 import { router } from "expo-router";
 import { useDispatch } from "react-redux";
@@ -74,7 +74,7 @@ export default function PrincipalCatalog({ name }) {
     try {   
         const response = await typeProductRequest(name, nextPageType);
         const productsTypes = reset
-            ? response.results
+            ? response.data.results
             : [...(productTypes || []), ...response.data.results];
             setProductTypes(productsTypes); // Elimina duplicados
             setNextPageType(response.data.next)
@@ -112,111 +112,118 @@ export default function PrincipalCatalog({ name }) {
     return diasPasados <= 15; // Puedo cambiar 3 por la cantidad de días que consideres "reciente"
     };
 
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#121212" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#f8f9fa" }}>
+    {/* Header fijo: solo el botón hamburguesa + logo, ocupa todo el ancho */}
     <View
         key="sticky-filter"
         style={{
-        backgroundColor: "#121212",
+        backgroundColor: "#ffffff",
         zIndex: 10,
-        paddingVertical: 10,
-        paddingHorizontal: 20,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
         shadowRadius: 4,
-        elevation: 6,
+        elevation: 3,
         }}
     >
-        <ProductTypeFilter
+        <FilterToggleButton
         logoUri={companyInfo?.url_logo || null}
         showTypes={showTypes}
-        setShowTypes={(value)=>{!value ?(setShowTypes(false),setProductTypes([])):setShowTypes(true)}}
+        setShowTypes={setShowTypes}
+        selectedType={selectedType}
+        productTypes={productTypes}
+        onFetchTypes={requestProductTypes}
+        />
+    </View>
+
+    {/* Contenedor en fila: panel lateral + catálogo, verdaderos hermanos */}
+    <View style={{ flex: 1, flexDirection: "row" }}>
+        <FilterSidebar
+        showTypes={showTypes}
+        setShowTypes={setShowTypes}
         selectedType={selectedType}
         setSelectedType={setSelectedType}
         productTypes={productTypes}
-        onFetchTypes={requestProductTypes}
         onFilterChange={(tipoId) => {
             requestCatalog(name, tipoId, true, null);
         }}
-        onLoadMoreType={handleLoadMoreType} 
+        onLoadMoreType={handleLoadMoreType}
         />
-    </View>
-    <FlatList
-    ref={flatListRef}
-    style={styles.containerFlatlist}
-    contentContainerStyle={{ paddingBottom: 100 }}
-    numColumns={numColumns}
-    data={catalogData}
-    key={numColumns}
-    keyExtractor={(item) => item.id.toString()}
-    ListEmptyComponent={() => (
-            <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 20 }}>
-            <Text style={{ color: "#fff" }}>No hay productos disponibles</Text>
-            </View>
-        )}
-    ListHeaderComponent={() => (
-    // Índice 0: Info empresa (no sticky)
-    <View key="header-info" style={{ padding: 20 }}>
-        <CompanyInfoRequest info={companyInfo} />
-    </View>  
-    )}
-    // Esto hace que el segundo hijo del header (índice 1) sea sticky
-    stickyHeaderHiddenOnScroll={true}
-    showsVerticalScrollIndicator={false}
 
-    renderItem={({ item }) => {
-        const imageUri = item?.image_principal?.trim()
-        ? item.image_principal
-        : "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
-
-        const esReciente = esProductoReciente(item.creado_en);
-
-        return (
-        <Pressable
-            style={[
-            styles.containerProduct,
-            { width: `${100 / numColumns - 4}%` },
-            ]}
-            onPress={() => {
-            router.push({
-                pathname: "/catalog/productDetail",
-                params: { id: item.id, name: name },
-            });
-            }}
-        >
-            <Image
-            source={{ uri: imageUri }}
-            style={styles.productImage}
-            resizeMode="cover"
-            />
-
-            {esReciente && (
-                <View style={styles.etiquetaNuevo}>
-                    <Text style={styles.textoEtiqueta}>Nuevo</Text>
+        <FlatList
+        ref={flatListRef}
+        style={[styles.containerFlatlist, { flex: 1 }]}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        numColumns={numColumns}
+        data={catalogData}
+        key={numColumns}
+        keyExtractor={(item) => item.id.toString()}
+        ListEmptyComponent={() => (
+                <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 20 }}>
+                <Text style={{ color: "#444" }}>No hay productos disponibles</Text>
                 </View>
             )}
+        ListHeaderComponent={() => (
+        // Índice 0: Info empresa (no sticky)
+        <View key="header-info" style={{ padding: 20 }}>
+            <CompanyInfoRequest info={companyInfo} />
+        </View>  
+        )}
+        showsVerticalScrollIndicator={false}
 
-            <View style={styles.containerText}>
-            <Text numberOfLines={1} style={styles.textProductsTitle}>
-                {item.nombre}
-            </Text>
-            <Text style={styles.textProducts}>
-                {pesosFormat(item.valor)}
-            </Text>
-            </View>
+        renderItem={({ item }) => {
+            const imageUri = item?.image_principal?.trim()
+            ? item.image_principal
+            : "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
 
-            <Text style={styles.productCode}>#{item.numero_producto}</Text>
-        </Pressable>
-        );
-    }}
-        ListFooterComponent={() => loadingMore && (
-            <ActivityIndicator size="large" color="#5e5ce6" style={{ marginVertical: 20 }} />
-            )}
-        onEndReached={handleLoadMore} // Detecta el final del scroll
-        onEndReachedThreshold={0.5} // Umbral para disparar la carga de más datos
-    />
+            const esReciente = esProductoReciente(item.creado_en);
+
+            return (
+            <Pressable
+                style={[
+                styles.containerProduct,
+                { width: `${100 / numColumns - 4}%` },
+                ]}
+                onPress={() => {
+                router.push({
+                    pathname: "/catalog/productDetail",
+                    params: { id: item.id, name: name },
+                });
+                }}
+            >
+                <Image
+                source={{ uri: imageUri }}
+                style={styles.productImage}
+                resizeMode="cover"
+                />
+
+                {esReciente && (
+                    <View style={styles.etiquetaNuevo}>
+                        <Text style={styles.textoEtiqueta}>Nuevo</Text>
+                    </View>
+                )}
+
+                <View style={styles.containerText}>
+                <Text numberOfLines={1} style={styles.textProductsTitle}>
+                    {item.nombre}
+                </Text>
+                <Text style={styles.textProducts}>
+                    {pesosFormat(item.valor)}
+                </Text>
+                </View>
+
+                <Text style={styles.productCode}>#{item.numero_producto}</Text>
+            </Pressable>
+            );
+        }}
+            ListFooterComponent={() => loadingMore && (
+                <ActivityIndicator size="large" color="#5e5ce6" style={{ marginVertical: 20 }} />
+                )}
+            onEndReached={handleLoadMore} // Detecta el final del scroll
+            onEndReachedThreshold={0.5} // Umbral para disparar la carga de más datos
+        />
+    </View>
 
     <Pressable
         onPress={() => router.push("/catalog/car")}
@@ -240,22 +247,21 @@ export default function PrincipalCatalog({ name }) {
 
 const styles = StyleSheet.create({
   containerFlatlist: {
-    flex: 1,
     paddingHorizontal: 12,
-    backgroundColor: "#121212",
+    backgroundColor: "#f8f9fa",
   },
 
   containerProduct: {
-    backgroundColor: "#2c2c2e",
+    backgroundColor: "#ffffff",
     borderRadius: 12,
     margin: 8,
     padding: 12,
     alignItems: "center",
     justifyContent: "flex-start",
     shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 3,
   },
 
   productImage: {
@@ -272,18 +278,19 @@ const styles = StyleSheet.create({
   textProductsTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#ffffff",
+    color: "#222222",
     marginBottom: 4,
   },
 
   textProducts: {
-    fontSize: 14,
-    color: "#cccccc",
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#5e5ce6", // Highlight brand color for price
   },
 
   productCode: {
     fontSize: 12,
-    color: "#888",
+    color: "#888888",
     marginTop: 6,
   },
   etiquetaNuevo: {

@@ -60,7 +60,7 @@ export default function DetailProductCatalog({ productId, name }) {
   if (!data) {
     return (
       <View style={styles.loader}>
-        <Text style={{ color: "#fff" }}>
+        <Text style={{ color: "#444" }}>
           No se encontró información del producto.
         </Text>
       </View>
@@ -83,15 +83,12 @@ export default function DetailProductCatalog({ productId, name }) {
 ) : (
   <Image
     source={{ uri: imageUri }}
-    style={[
-      styles.image,
-      {
-        width: "100%",
-        maxWidth: 400,
-        aspectRatio: 3 / 4,
-        alignSelf: "center",
-      },
-    ]}
+    style={{
+      width: "100%",
+      maxWidth: 500,
+      aspectRatio: 1,
+      alignSelf: "center",
+    }}
     resizeMode="cover"
   />
 )}
@@ -151,38 +148,49 @@ export default function DetailProductCatalog({ productId, name }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: "#f8f9fa",
   },
   loader: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: "#f8f9fa",
     justifyContent: "center",
     alignItems: "center",
   },
   image: {
-    borderRadius: 12,
-    marginTop: 20,
-    marginBottom: 10,
+    // Left empty or remove if not needed, as styles are now inline
   },
   infoBox: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     alignItems: "flex-start",
+    backgroundColor: "#ffffff",
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    marginTop: -20,
+    paddingTop: 30,
+    paddingBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 5,
   },
   name: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "bold",
-    color: "#ffffff",
+    color: "#222222",
     marginBottom: 8,
   },
   price: {
-    fontSize: 20,
+    fontSize: 22,
+    fontWeight: "800",
     color: "#5e5ce6",
-    marginBottom: 12,
+    marginBottom: 16,
   },
   detail: {
-    fontSize: 14,
-    color: "#cccccc",
-    marginBottom: 4,
+    fontSize: 15,
+    lineHeight: 22,
+    color: "#555555",
+    marginBottom: 6,
   },
   detailLabel: {
     fontWeight: "bold",
@@ -191,37 +199,54 @@ const styles = StyleSheet.create({
   quantityContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 20,
-    marginBottom: 10,
-    gap: 10,
+    marginTop: 24,
+    marginBottom: 24,
+    backgroundColor: "#f0f2f5",
+    borderRadius: 30,
+    padding: 6,
+    alignSelf: "flex-start",
   },
   quantityButton: {
-    backgroundColor: "#2c2c2e",
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 16,
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   quantityButtonText: {
-    fontSize: 20,
-    color: "#fff",
+    fontSize: 22,
+    color: "#5e5ce6",
     fontWeight: "bold",
+    lineHeight: 24,
   },
   quantityText: {
     fontSize: 18,
-    color: "#fff",
-    minWidth: 30,
+    color: "#333333",
+    minWidth: 40,
     textAlign: "center",
+    fontWeight: "700",
   },
   cartButton: {
-    marginTop: 5,
     backgroundColor: "#5e5ce6",
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 8,
+    borderRadius: 30,
     alignSelf: "stretch",
     alignItems: "center",
-    marginHorizontal:20,
-    marginBottom:10
+    marginHorizontal: 20,
+    marginBottom: 20,
+    marginTop: 10,
+    shadowColor: "#5e5ce6",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   cartButtonText: {
     color: "#fff",

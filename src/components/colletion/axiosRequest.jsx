@@ -28,7 +28,7 @@ export const handleSuggestedRetailPrice = async (price, token, margen = 0) => {
 
 //list typeProduct not filter
 export const handleTypeProduct = async (token, urlPage = null) => {
-  let url = urlPage?? `${baseUrl}listType/`;
+  let url = urlPage ?? `${baseUrl}listType/`;
   try {
     const request = await getRequest(url, token);
     return request;
@@ -42,8 +42,8 @@ export const handleTypeProduct = async (token, urlPage = null) => {
 export const handleTypeProductFilter = async ({ url = null, token, value = "" }) => {
   let finaleUrl = url ?? `${baseUrl}typeProductFilter/`;
   if (value) {
-    finaleUrl += finaleUrl.includes('?') 
-      ? `&q=${encodeURIComponent(value)}` 
+    finaleUrl += finaleUrl.includes('?')
+      ? `&q=${encodeURIComponent(value)}`
       : `?q=${encodeURIComponent(value)}`;
   }
 
@@ -68,11 +68,11 @@ export async function handleCreateTypeProduct({ token, nameTypeProduct }) {
   }
 }
 
-export async function handleDeleteTypeProduct(token,id){
-  let url=`${baseUrl}destroytypeProduct/${id}/`
-  try{
-    const request = await deleteRequest(url,token)
-  }catch(error){
+export async function handleDeleteTypeProduct(token, id) {
+  let url = `${baseUrl}destroytypeProduct/${id}/`
+  try {
+    const request = await deleteRequest(url, token)
+  } catch (error) {
   }
 }
 //-----------------------------------PRODUCTO----------------------------------------
@@ -88,8 +88,8 @@ export const handleRetrieveProduct = async (id = 0, token) => {
 };
 
 //barCodeProduct
-export const handleBarCode = async (id,token )=>{
-  let url=`${baseUrl}facturas/api/barcode/${id}/`
+export const handleBarCode = async (id, token) => {
+  let url = `${baseUrl}facturas/api/barcode/${id}/`
   try {
     const request = await getRequest(url, token);
     return request.data;
@@ -150,12 +150,14 @@ export async function handleListProductFilterAdmin(
 
 //delete Product
 export async function handleDeleteProduct({ id, token }) {
+  console.log(id)
   let url = `${baseUrl}destroyproduct/${id}/`;
 
   try {
     let request = await deleteRequest(url, token);
     return request;
   } catch (error) {
+    console.log(error)
     throw error;
   }
 }
@@ -173,21 +175,21 @@ export async function handleUpdateUnitsProduct(token, id, date) {
 }
 
 export const handlePatchProduct = async (id, data, token) => {
-  try{
-    const response = await patchRequest(`${baseUrl}updateProduct/${id}/`,data,token);
+  try {
+    const response = await patchRequest(`${baseUrl}updateProduct/${id}/`, data, token);
     return response
-  }catch(error){
+  } catch (error) {
     console.error("Error al actualizar el producto:", error);
     if (error.response) {
-          const status = error.response.status;
-          const data = error.response.data;
+      const status = error.response.status;
+      const data = error.response.data;
 
-          // Si el error es un objeto, lo convertimos a string
-          const readableError = typeof data === 'object' ? JSON.stringify(data) : data;
+      // Si el error es un objeto, lo convertimos a string
+      const readableError = typeof data === 'object' ? JSON.stringify(data) : data;
 
-          throw new Error(`Error ${status}: ${readableError}`);
-        } else {
-          throw new Error('Error desconocido en la solicitud PATCH');
-        }
-      }
+      throw new Error(`Error ${status}: ${readableError}`);
+    } else {
+      throw new Error('Error desconocido en la solicitud PATCH');
+    }
+  }
 };

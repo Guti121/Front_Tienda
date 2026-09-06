@@ -28,16 +28,16 @@ import ImageModal from "../../catalog/stylesCatalogo/modalImage";
 export default function DetailProduct({ id }) {
   const [selectedImage, setSelectedImage] = useState(null);
   const screenWidth = Dimensions.get('window').width;
-    // Define un ancho base para las imágenes
-    const imageWidth = isWeb
-      ? Math.min(150, screenWidth / 6)  // para web, máximo 150px o divide la pantalla
-      : screenWidth / 4;      
-      //hook product
+  // Define un ancho base para las imágenes
+  const imageWidth = isWeb
+    ? Math.min(150, screenWidth / 6)  // para web, máximo 150px o divide la pantalla
+    : screenWidth / 4;
+  //hook product
   const [product, setProduct] = useState([]);
   const [stateModalConfirm, setStateModalConfirm] = useState(false);
   const [stateBarNotification, setStateBarNotification] = useState(null);
-  const [barcodeProduct,setBarCodeProduct] = useState(null)
-  const [error,setError]= useState(false)
+  const [barcodeProduct, setBarCodeProduct] = useState(null)
+  const [error, setError] = useState(false)
   //hook Pressable
 
   //colors
@@ -70,10 +70,11 @@ export default function DetailProduct({ id }) {
           const request = await handleRetrieveProduct(id, token);
           setProduct(request.data);
 
-          const barcode =await handleBarCode(id,token);
+          const barcode = await handleBarCode(id, token);
           setBarCodeProduct(barcode.barcode)
         }
         if (query === "delete") {
+          console.log("hola")
           await handleDeleteProduct({ id, token });
           barNotificationfunction(
             iconDelete("black"),
@@ -107,59 +108,59 @@ export default function DetailProduct({ id }) {
 
   //Variable para renderizar imagen  
   const imageUriBarcode = barcodeProduct
-              ? barcodeProduct
-              : "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
+    ? barcodeProduct
+    : "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
 
-  
+
 
   //print codigo de barras 
   // Agrega este fragmento dentro de tu componente DetailProduct, después de const [selectedSize...]
   // Hooks
-const [showPrintSizeModal, setShowPrintSizeModal] = useState(false);
-const [selectedSize, setSelectedSize] = useState("80");
+  const [showPrintSizeModal, setShowPrintSizeModal] = useState(false);
+  const [selectedSize, setSelectedSize] = useState("80");
 
-const sizeOptions = ["58", "80", "100"];
+  const sizeOptions = ["58", "80", "100"];
 
-const sizeConfig = {
-  "58": {
-    width: 58,
-    height: 35,
-    titleSize: 9,
-    priceSize: 9,
-    barcodeWidth: "50mm"
-  },
-  "80": {
-    width: 80,
-    height: 40,
-    titleSize: 10,
-    priceSize: 9,
-    barcodeWidth: "70mm"
-  },
-  "100": {
-    width: 100,
-    height: 45,
-    titleSize: 12,
-    priceSize: 10,
-    barcodeWidth: "85mm"
-  }
-};
+  const sizeConfig = {
+    "58": {
+      width: 58,
+      height: 35,
+      titleSize: 9,
+      priceSize: 9,
+      barcodeWidth: "50mm"
+    },
+    "80": {
+      width: 80,
+      height: 40,
+      titleSize: 10,
+      priceSize: 9,
+      barcodeWidth: "70mm"
+    },
+    "100": {
+      width: 100,
+      height: 45,
+      titleSize: 12,
+      priceSize: 10,
+      barcodeWidth: "85mm"
+    }
+  };
 
-const convertImageToBase64 = async (imageUrl) => {
-  const response = await fetch(`${imageUrl}?t=${new Date().getTime()}`, {
-    mode: 'cors',
-    cache: 'no-store'
-  });
-  const blob = await response.blob();
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.readAsDataURL(blob);
-  });
-};
-const generateHTML = (size = "80", base64Image = "", barcodeNumber = "") => {
-  const config = sizeConfig[size] || sizeConfig["80"];
+  const convertImageToBase64 = async (imageUrl) => {
+    const response = await fetch(`${imageUrl}?t=${new Date().getTime()}`, {
+      mode: 'cors',
+      cache: 'no-store'
+    });
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  };
+  const generateHTML = (size = "80", base64Image = "", barcodeNumber = "") => {
+    const config = sizeConfig[size] || sizeConfig["80"];
 
-  return `
+    return `
     <div style="
       width: ${config.width}mm;
       height: ${config.height}mm;
@@ -201,45 +202,45 @@ const generateHTML = (size = "80", base64Image = "", barcodeNumber = "") => {
       ">${barcodeNumber}</div>
     </div>
   `;
-};
+  };
 
-const downloadBarcodePDF = async (size) => {
-  if (!product || !product.nombre || !product.valor) {
-    alert("El producto no está cargado correctamente.");
-    return;
-  }
+  const downloadBarcodePDF = async (size) => {
+    if (!product || !product.nombre || !product.valor) {
+      alert("El producto no está cargado correctamente.");
+      return;
+    }
 
-  const config = sizeConfig[size] || sizeConfig["80"];
-  const base64Image = await convertImageToBase64(imageUriBarcode);
-  const htmlContent = generateHTML(size, base64Image, product.codigo_barras || "");
+    const config = sizeConfig[size] || sizeConfig["80"];
+    const base64Image = await convertImageToBase64(imageUriBarcode);
+    const htmlContent = generateHTML(size, base64Image, product.codigo_barras || "");
 
-  const container = document.createElement('div');
-  container.innerHTML = htmlContent;
-  document.body.appendChild(container);
+    const container = document.createElement('div');
+    container.innerHTML = htmlContent;
+    document.body.appendChild(container);
 
-  html2pdf()
-    .from(container)
-    .set({
-      margin: 0,
-      filename: `${product.nombre || 'codigo-de-barras'}.pdf`,
-      html2canvas: { scale: 2 },
-      jsPDF: {
-        unit: 'mm',
-        format: [config.height, config.width],
-        orientation: 'landscape'
-      }
-    })
-    .save()
-    .then(() => {
-      document.body.removeChild(container);
-    });
-};
+    html2pdf()
+      .from(container)
+      .set({
+        margin: 0,
+        filename: `${product.nombre || 'codigo-de-barras'}.pdf`,
+        html2canvas: { scale: 2 },
+        jsPDF: {
+          unit: 'mm',
+          format: [config.height, config.width],
+          orientation: 'landscape'
+        }
+      })
+      .save()
+      .then(() => {
+        document.body.removeChild(container);
+      });
+  };
 
 
 
   return (
     <SafeAreaView style={{ flex: 1, justifyContent: "center" }}>
-     {error && <Text style={{color:'red'}}>Error Producto no encontrado</Text>}
+      {error && <Text style={{ color: 'red' }}>Error Producto no encontrado</Text>}
       <View style={styles.principalView}>
         {stateBarNotification && (
           <BarNotification
@@ -254,59 +255,59 @@ const downloadBarcodePDF = async (size) => {
           }}
         >
           <View style={styles.containerNumeroProducto}>
-            <Text style={{ ...theme.textNames , fontSize: 20 }}>
+            <Text style={{ ...theme.textNames, fontSize: 20 }}>
               #{product.numero_producto}
             </Text>
-            <Text style={{ ...theme.textNames,color:theme.colors.primary, fontSize: 15 }}>
+            <Text style={{ ...theme.textNames, color: theme.colors.primary, fontSize: 15 }}>
               {product?.publicar === true ? "Publico" : "Privado" || "No especificado"}</Text>
           </View>
           <View style={styles.nameView}>
-           
-              {product?.imagenes?.length > 0 && (
-                <View style={{ width: '100%', marginBottom: 10 }}>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={true}
-                    style={{ width: '100%'}}
-                    contentContainerStyle={{
-                      paddingHorizontal: 10,
-                      flexDirection: 'row',
-                      alignItems: 'center' ,
-                      justifyContent:'center'
-                    }}
-                  >
-                    {product.imagenes?.map((img, index) => (
-                      <Pressable key={index} onPress={() => setSelectedImage(img.imagen)}>
-                        <Image
-                          source={{ uri: img.imagen }}
-                          style={{
-                            width: imageWidth,
-                            height: imageWidth * 1.3,
-                            borderRadius: 10,
-                            marginRight: 10,
-                            borderWidth: img.principal ? 2 : 1,
-                            borderColor: img.principal ? theme.colors.primary : "#ccc",
-                          }}
-                        />
-                      </Pressable>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
 
-            <Text numberOfLines={2} style={[styles.textName , {marginVertical:20}]}>
+            {product?.imagenes?.length > 0 && (
+              <View style={{ width: '100%', marginBottom: 10 }}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={true}
+                  style={{ width: '100%' }}
+                  contentContainerStyle={{
+                    paddingHorizontal: 10,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  {product.imagenes?.map((img, index) => (
+                    <Pressable key={index} onPress={() => setSelectedImage(img.imagen)}>
+                      <Image
+                        source={{ uri: img.imagen }}
+                        style={{
+                          width: imageWidth,
+                          height: imageWidth * 1.3,
+                          borderRadius: 10,
+                          marginRight: 10,
+                          borderWidth: img.principal ? 2 : 1,
+                          borderColor: img.principal ? theme.colors.primary : "#ccc",
+                        }}
+                      />
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
+            <Text numberOfLines={2} style={[styles.textName, { marginVertical: 20 }]}>
               {product.nombre}
             </Text>
 
           </View>
 
-          <View style={{flexDirection:'row',width:'100%'}}>
+          <View style={{ flexDirection: 'row', width: '100%' }}>
 
-           {user.typeUser === 'creator' && <View
+            {user.typeUser === 'creator' && <View
               style={{
-                width:'50%'
+                width: '50%'
               }}
-              >
+            >
               <Text style={styles.textTitles}>Valor por mayor</Text>
               <Text style={{ ...styles.textDetail, fontSize: 15 }}>
                 {pesosFormat(product.valor_mayor)}
@@ -314,33 +315,33 @@ const downloadBarcodePDF = async (size) => {
             </View>}
             <View
               style={{
-                width:'50%', 
-                backgroundColor:theme.colors.primary 
+                width: '50%',
+                backgroundColor: theme.colors.primary
               }}
-              >
-              <Text style={[styles.textTitles,{color:'white'}]}>Valor de venta</Text>
-              <Text style={{ ...styles.textDetail, fontSize: 15,color:'white' }}>
+            >
+              <Text style={[styles.textTitles, { color: 'white' }]}>Valor de venta</Text>
+              <Text style={{ ...styles.textDetail, fontSize: 15, color: 'white' }}>
                 {pesosFormat(product.valor)}
               </Text>
             </View>
-            
+
           </View>
-         {user.typeUser === 'creator' && <View
-              style={{
-                width:'50%'
-              }}
-              >
-              <Text style={styles.textTitles}>Valor de Costos Fijos</Text>
-              <Text style={{ ...styles.textDetail, fontSize: 15 }}>
-                {pesosFormat(product.valor_costos_fijos)}
-              </Text>
-            </View>}
+          {user.typeUser === 'creator' && <View
+            style={{
+              width: '50%'
+            }}
+          >
+            <Text style={styles.textTitles}>Valor de Costos Fijos</Text>
+            <Text style={{ ...styles.textDetail, fontSize: 15 }}>
+              {pesosFormat(product.valor_costos_fijos)}
+            </Text>
+          </View>}
           <View style={styles.containerDetailsView}>
             <View style={styles.containerDetails}>
               <Text style={styles.textTitles}>Tipo de Producto</Text>
               <Text style={styles.textDetail}>{product.tipo_producto}</Text>
             </View>
-            
+
             <View style={styles.containerDetails}>
               <Text style={styles.textTitles}>Unidades Disponibles</Text>
               <View
@@ -409,68 +410,68 @@ const downloadBarcodePDF = async (size) => {
               </View>
 
             </View>
-              <View style={styles.containerDetails}>
-                <Text style={styles.textTitles}>Detalles</Text>
-                <Text style={styles.textDetail}>{product.detalles}</Text>
-              </View>
+            <View style={styles.containerDetails}>
+              <Text style={styles.textTitles}>Detalles</Text>
+              <Text style={styles.textDetail}>{product.detalles}</Text>
+            </View>
           </View>
-          
+
           <View style={styles.nameView}>
             <Image
-                  source={{ uri:imageUriBarcode }}
-                  style={{ width:300, height: 150, resizeMode: "cover" }}
-                  />
-          <Pressable onPress={() => setShowPrintSizeModal(true)}>
-            <Text style={{ color: 'green' }}>Descargar PDF</Text>
-          </Pressable>
+              source={{ uri: imageUriBarcode }}
+              style={{ width: 300, height: 150, resizeMode: "cover" }}
+            />
+            <Pressable onPress={() => setShowPrintSizeModal(true)}>
+              <Text style={{ color: 'green' }}>Descargar PDF</Text>
+            </Pressable>
 
-          
-            <Modal  visible={showPrintSizeModal}
+
+            <Modal visible={showPrintSizeModal}
               transparent={true}
               animationType="fade"
               onRequestClose={() => setShowPrintSizeModal(false)}
             >
 
-            <View style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              backgroundColor: 'rgba(0,0,0,0.5)',
-              justifyContent: 'center',
-              alignItems: 'center',
-              zIndex: 100,
-            }}>
-              <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 10, width: 250 }}>
-                <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 10 }}>Seleccione el tamaño</Text>
-                {sizeOptions.map((size) => (
-                  <Pressable key={size} onPress={() => setSelectedSize(size)}>
-                    <Text style={{
-                      padding: 10,
-                      backgroundColor: selectedSize === size ? '#ccc' : '#eee',
-                      marginBottom: 5,
-                      textAlign: 'center'
-                    }}>{size} mm</Text>
-                  </Pressable>
-                ))}
-                <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 10 }}>
-                  <Pressable onPress={() => setShowPrintSizeModal(false)}>
-                    <Text style={{ color: 'red' }}>Cancelar</Text>
-                  </Pressable>
-                  <Pressable onPress={() => {
-                    setShowPrintSizeModal(false);
-                    isWeb ? downloadBarcodePDF(selectedSize) : handlePrint(selectedSize);
-                  }}>
-                    <Text style={{ color: 'green' }}>Descargar</Text>
-                  </Pressable>
+              <View style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                justifyContent: 'center',
+                alignItems: 'center',
+                zIndex: 100,
+              }}>
+                <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 10, width: 250 }}>
+                  <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 10 }}>Seleccione el tamaño</Text>
+                  {sizeOptions.map((size) => (
+                    <Pressable key={size} onPress={() => setSelectedSize(size)}>
+                      <Text style={{
+                        padding: 10,
+                        backgroundColor: selectedSize === size ? '#ccc' : '#eee',
+                        marginBottom: 5,
+                        textAlign: 'center'
+                      }}>{size} mm</Text>
+                    </Pressable>
+                  ))}
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 10 }}>
+                    <Pressable onPress={() => setShowPrintSizeModal(false)}>
+                      <Text style={{ color: 'red' }}>Cancelar</Text>
+                    </Pressable>
+                    <Pressable onPress={() => {
+                      setShowPrintSizeModal(false);
+                      isWeb ? downloadBarcodePDF(selectedSize) : handlePrint(selectedSize);
+                    }}>
+                      <Text style={{ color: 'green' }}>Descargar</Text>
+                    </Pressable>
+                  </View>
                 </View>
               </View>
-            </View>
             </Modal>
 
           </View>
-          
+
         </ScrollView>
         <View
           style={{
@@ -516,10 +517,10 @@ const downloadBarcodePDF = async (size) => {
         onClose={closeModalConfirm}
       />
       <ImageModal
-        visible={!!selectedImage} 
+        visible={!!selectedImage}
         imageUri={selectedImage}
         onClose={() => setSelectedImage(null)}
-        />
+      />
 
     </SafeAreaView>
   );
@@ -540,16 +541,16 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   nameView: {
-    paddingHorizontal:10,
+    paddingHorizontal: 10,
     width: "100%",
     justifyContent: "center",
     alignItems: "center",
     ...theme.borderColorInput,
   },
   textName: {
-    textAlign:'center',
+    textAlign: 'center',
     ...theme.textTitle,
-    textTransform:'uppercase',
+    textTransform: 'uppercase',
     margin: 1,
   },
   containerDetailsView: {
@@ -570,11 +571,12 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     ...theme.textTitle,
     margin: 5,
-    fontSize:15
+    fontSize: 15
   },
-  textDetail: {margin: 5, 
+  textDetail: {
+    margin: 5,
     ...theme.textNames,
-    fontSize:15
+    fontSize: 15
 
   },
 
@@ -583,6 +585,6 @@ const styles = StyleSheet.create({
     width: "33%",
     justifyContent: "center",
     alignItems: "center",
-   
+
   },
 });

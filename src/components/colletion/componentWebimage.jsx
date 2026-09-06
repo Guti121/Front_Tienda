@@ -1,92 +1,256 @@
-import React, { useRef } from 'react';
-import { iconDelete, iconImage } from '../icons/icons';
-import { isWeb } from '../token/localstorage';
-import { Alert } from 'react-native';
+import React, { useRef, useState } from "react";
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  Image,
+  Platform,
+  Alert,
+} from "react-native";
+
+import { iconDelete, iconImage } from "../icons/icons";
 
 export default function ImagePickerWeb({ images, setImages }) {
   const inputRef = useRef(null);
+  const [isHovered, setIsHovered] = useState(false);
 
-const handlePick = (e) => {
-  const files = Array.from(e.target.files);
+  const MAX_IMAGES = 5;
+  const MAX_SIZE_MB = 10;
 
-  if (images.length + files.length > 5) {
-    if (isWeb) {
-      alert("Solo puedes subir un máximo de 5 imágenes.");
+  const showMessage = (title, message) => {
+    if (Platform.OS === "web") {
+      alert(message);
     } else {
-      Alert.alert("Límite alcanzado", "Solo puedes subir un máximo de 5 imágenes.");
+      Alert.alert(title, message);
     }
-    return;
-  }
+  };
 
-  const newImages = files.map((file) => ({
-    file,
-    uri: URL.createObjectURL(file),
-  }));
+  const handlePick = (e) => {
+    const files = Array.from(e.target.files || []);
 
-  setImages([...images, ...newImages]);
-};
+    if (!files.length) return;
+
+    // Validate max images
+    if (images.length + files.length > MAX_IMAGES) {
+      showMessage(
+        "Límite alcanzado",
+        `Solo puedes subir un máximo de ${MAX_IMAGES} imágenes.`
+      );
+
+      if (inputRef.current) {
+        inputRef.current.value = "";
+      }
+
+      return;
+    }
+
+    const validFiles = [];
+    const rejectedFiles = [];
+
+    files.forEach((file) => {
+      console.log("FILE NAME:", file.name);
+      console.log("FILE TYPE:", file.type);
+      console.log("FILE SIZE:", file.size);
+
+      const sizeInMB = file.size / (1024 * 1024);
+
+      // Validate file size only
+      if (sizeInMB > MAX_SIZE_MB) {
+        rejectedFiles.push(
+          `${file.name || "archivo"} supera ${MAX_SIZE_MB}MB`
+        );
+        return;
+      }
+
+      validFiles.push({
+        file,
+        uri: URL.createObjectURL(file),
+      });
+    });
+
+    // Show rejected files
+    if (rejectedFiles.length > 0) {
+      showMessage(
+        "Algunos archivos fueron rechazados",
+        rejectedFiles.join("\n")
+      );
+    }
+
+    if (validFiles.length > 0) {
+      setImages((prev) => [...prev, ...validFiles]);
+    }
+
+    // Reset input to allow selecting same file again
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
+  };
 
   const removeImage = (index) => {
     const updated = [...images];
+
+    // Free preview memory
+    if (updated[index]?.uri) {
+      URL.revokeObjectURL(updated[index].uri);
+    }
+
     updated.splice(index, 1);
     setImages(updated);
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-      <button
-        onClick={() => inputRef.current.click()}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: 12,
-          border: '1px solid #ccc',
-          borderRadius: 12,
-          backgroundColor: '#fff',
-        }}
-      >
-        {iconImage({ size: 20, color: 'black' })} Seleccionar Imágenes
-      </button>
-      <input
-        type="file"
-        accept="image/*"
-        multiple
-        ref={inputRef}
-        style={{ display: 'none' }}
-        onChange={handlePick}
-      />
+    <View style={styles.container}>
+      <Text style={styles.label}>Imágenes del Producto</Text>
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-        {images?.map((img, idx) => (
-          <div key={idx} style={{ position: 'relative', display: 'inline-block' }}>
-            <img
-              src={img.uri}
-              alt="preview"
-              style={{ width: 50, height: 75, borderRadius: 8, objectFit: 'cover' }}
-            />
-            <button
-              onClick={() => removeImage(idx)}
-              style={{
-                position: 'absolute',
-                top: -10,
-                right: -10,
-                backgroundColor: '#fff',
-                border: '1px solid #ccc',
-                borderRadius: '50%',
-                width: 20,
-                height: 20,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-              }}
-            >
-              {iconDelete('red', 12)}
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
+      <Pressable
+        onPress={() => inputRef.current?.click()}
+        onHoverIn={() => setIsHovered(true)}
+        onHoverOut={() => setIsHovered(false)}
+        style={[
+          styles.uploadBox,
+          isHovered && styles.uploadBoxHovered,
+        ]}
+      >
+        <View style={styles.iconContainer}>
+          {iconImage({
+            size: 32,
+            color: isHovered ? "#5e5ce6" : "#8e8e93",
+          })}
+        </View>
+
+        <Text style={styles.uploadTitle}>
+          Haz clic para subir imágenes
+        </Text>
+
+        <Text style={styles.uploadSubtitle}>
+          Puedes tomar foto o elegir desde galería
+        </Text>
+
+        <Text style={styles.uploadSubtitle}>
+          Máximo {MAX_IMAGES} imágenes • Máx {MAX_SIZE_MB}MB
+        </Text>
+      </Pressable>
+
+      {/* WEB + MOBILE WEB */}
+      {Platform.OS === "web" && (
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={handlePick}
+        />
+      )}
+
+      {/* Preview images */}
+      {images?.length > 0 && (
+        <View style={styles.previewContainer}>
+          {images.map((img, idx) => (
+            <View key={idx} style={styles.imageWrapper}>
+              <Image
+                source={{ uri: img.uri }}
+                style={styles.previewImage}
+              />
+
+              <Pressable
+                onPress={() => removeImage(idx)}
+                style={styles.deleteButton}
+              >
+                {iconDelete("#fff", 14)}
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    width: "100%",
+    marginVertical: 15,
+  },
+
+  label: {
+    fontSize: 14,
+    color: "#333",
+    marginBottom: 8,
+    fontWeight: "500",
+  },
+
+  uploadBox: {
+    borderWidth: 2,
+    borderColor: "#e5e5ea",
+    borderStyle: "dashed",
+    borderRadius: 16,
+    padding: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fafafa",
+  },
+
+  uploadBoxHovered: {
+    borderColor: "#5e5ce6",
+    backgroundColor: "#f5f5ff",
+  },
+
+  iconContainer: {
+    marginBottom: 12,
+    padding: 12,
+    backgroundColor: "#fff",
+    borderRadius: 50,
+  },
+
+  uploadTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1c1c1e",
+    marginBottom: 4,
+    textAlign: "center",
+  },
+
+  uploadSubtitle: {
+    fontSize: 13,
+    color: "#8e8e93",
+    textAlign: "center",
+    marginBottom: 4,
+  },
+
+  previewContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginTop: 16,
+  },
+
+  imageWrapper: {
+    position: "relative",
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#e5e5ea",
+  },
+
+  previewImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+
+  deleteButton: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    backgroundColor: "rgba(255, 59, 48, 0.9)",
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

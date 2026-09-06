@@ -140,6 +140,7 @@ export function BillGenerateDetail({ id }) {
       <html>
         <body>
           <h2 style="text-align: center; text-transform: uppercase;">${response.tienda_nombre}</h1> 
+          <h3 style="text-align: center;">NIT 1005021334-4</h2>
           <h3 style="text-align: center;">Factura #${id}</h2>
           <p style="text-align: center;">Fecha: ${date} Hora: ${time}</p>
           <p style="text-align: center;">Vendedor: ${response.creado_por_full_name}</p>

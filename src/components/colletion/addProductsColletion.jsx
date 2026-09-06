@@ -35,7 +35,7 @@ export function AddProductsColletion() {
   const [datesProducts, setDatesProducts] = useState([
     {
       nombre: "",
-      tipo_producto:"",
+      tipo_producto: "",
       detalles: "",
       valor_mayor: 0,
       valor_costos_fijos: 0,
@@ -57,11 +57,11 @@ export function AddProductsColletion() {
   const [stateModalCreate, setStateModalCreate] = useState(false);
   const [messageModalCreate, setMessageModalCreate] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
-  const [percent,setPercent] = useState(0)
+  const [percent, setPercent] = useState(0)
   const [isPublic, setIsPublic] = useState(false);
 
-  const [valorMayor,setValorMayor]= useState(0)
-  const [valor,setValor]= useState(0)
+  const [valorMayor, setValorMayor] = useState(0)
+  const [valor, setValor] = useState(0)
 
   //Error
   const [errorMessage, setErrorMessage] = useState(false);
@@ -69,7 +69,7 @@ export function AddProductsColletion() {
   // Establecemos la funcion que va a mostrarnos el precio sugerido
   useFocusEffect(
     useCallback(() => {
-      
+
       clearForm(); // Llama a la función cuando la pantalla se enfoque
     }, []) // Dependencias vacías para ejecutarlo solo cuando la pantalla se enfoca
   );
@@ -81,17 +81,17 @@ export function AddProductsColletion() {
         router.replace("login/");
       }
       if (which === "SRP") {
-        try{
+        try {
           const request = await handleSuggestedRetailPrice(
-          datesProducts[0].valor_mayor,
-          token,
-          percent
-        );
+            datesProducts[0].valor_mayor,
+            token,
+            percent
+          );
 
-        setMessageSuggested(request.data);
+          setMessageSuggested(request.data);
         }
-        catch(error){
-          setErrorParams(error?.response?.data?.error ||'Error al Buscar Datos')
+        catch (error) {
+          setErrorParams(error?.response?.data?.error || 'Error al Buscar Datos')
         }
       }
       // Si which es HTP significa que estamos consultando los tipos de productos existentes
@@ -104,63 +104,84 @@ export function AddProductsColletion() {
           const data = datesProducts[0];
           const formData = new FormData();
 
-          // Agregar automáticamente todos los campos excepto la imagen
-          for (const key in data) {
-            if (data[key] !== undefined && key !== "image") {
-              formData.append(key, data[key]);
-            }
+          // Explicit fields (safer than for...in)
+          formData.append("nombre", data.nombre || "");
+          formData.append("tipo_producto", String(data.tipo_producto || ""));
+          formData.append("detalles", data.detalles || "");
+          formData.append("valor", String(data.valor || 0));
+          formData.append("valor_mayor", String(data.valor_mayor || 0));
+          formData.append(
+            "unidades_disponibles",
+            String(data.unidades_disponibles || 0)
+          );
+          formData.append(
+            "valor_costos_fijos",
+            String(data.valor_costos_fijos || 0)
+          );
+          formData.append("publicar", String(isPublic));
+
+          // Multiple images
+          if (productImages?.length > 0) {
+            productImages.forEach((img, index) => {
+              if (img.file) {
+                // WEB → File object
+                formData.append("imagenes", img.file);
+              } else if (img.uri) {
+                // MOBILE → build file object manually
+                const uriParts = img.uri.split(".");
+                const fileType = uriParts[uriParts.length - 1] || "jpg";
+
+                formData.append("imagenes", {
+                  uri: img.uri,
+                  name: `image_${index}.${fileType}`,
+                  type: `image/${fileType}`,
+                });
+              }
+            });
           }
 
-          // Adjuntar múltiples imágenes
-          if (productImages?.length > 0) {
-              productImages.forEach((img, index) => {
-                if (img.file) {
-                  // Web or platforms that provide a File object
-                  formData.append("imagenes", img.file);
-                } else if (img.uri) {
-                  // Mobile: build the file manuall
-                  // y
-                  const uriParts = img.uri.split(".");
-                  const fileType = uriParts[uriParts.length - 1];
-                  formData.append("imagenes", {
-                    uri: img.uri,
-                    name: `image_${index}.${fileType}`,
-                    type: `image/${fileType}`,
-                  });
-                }
-              });
-            }
+          // Debug: see exactly what is being sent
+          for (let pair of formData.entries()) {
+            console.log(pair[0], pair[1]);
+          }
 
+          // Send request FIRST
+          const request = await handleCreateProduct(token, formData);
 
+          // Close modal AFTER success
           setStateModalCreate(false);
-          const request = await handleCreateProduct(token,formData);
-          
+
           setMessageModalCreate(true);
+
           setTimeout(() => {
             setMessageModalCreate(false);
-            if (request?.data?.id){
-            router.push({
-                  pathname: "/products/detailProduct",
-                  params: { id: request.data.id },
-                });
-          }
-          }, 1500);  
-          
-          clearForm()
-        
-          
+
+            if (request?.data?.id) {
+              router.push({
+                pathname: "/products/detailProduct",
+                params: { id: request.data.id },
+              });
+            }
+          }, 1500);
+
+          clearForm();
         } catch (error) {
+          console.log("FULL ERROR:", error);
+          console.log("ERROR RESPONSE:", error?.response?.data);
+
           const errorMessage =
             error.response?.data?.error?.error ||
-            error.response?.data?.error || // Si existe error.response.data.error, úsalo
-            error.response?.data?.detail || // Si no, usa error.response.data.detail
+            error.response?.data?.error ||
+            error.response?.data?.detail ||
             error.response?.data?.detalles ||
-            error.response?.datas || // Si tampoco, usa error.response.data completo
             "Error desconocido";
+
           setErrorMessage(
-            typeof errorMessage === "string" && errorMessage.length > 100 || errorMessage == "This field may not be blank."
-              ? "Ocurrió un error inesperado,verifica los campos y inténtalo de nuevo."
-              : String(errorMessage) // Convertir a string en caso de que sea un objeto o número
+            typeof errorMessage === "string" &&
+              (errorMessage.length > 100 ||
+                errorMessage === "This field may not be blank.")
+              ? "Ocurrió un error inesperado, verifica los campos e inténtalo de nuevo."
+              : String(errorMessage)
           );
         }
       }
@@ -184,7 +205,7 @@ export function AddProductsColletion() {
   const isNum = (num) => {
     if (isNaN(parseInt(num))) {
       setErrorMessage("Verificar los Valores numericos!");
-    } 
+    }
   };
   //-----------------------------------------------------------------------
   //resivimos el item seleccionado en el modal
@@ -240,7 +261,7 @@ export function AddProductsColletion() {
         tipo_producto: "",
         detalles: "",
         valor_mayor: 0,
-        valor_costos_fijos:0,
+        valor_costos_fijos: 0,
         valor: 0,
         unidades_disponibles: 0,
         publicar: false,
@@ -258,7 +279,7 @@ export function AddProductsColletion() {
     setMessageSuggested([])
   };
 
-  
+
 
   return (
     <View style={styles.containerPrincipal}>
@@ -272,9 +293,9 @@ export function AddProductsColletion() {
         <Text style={styles.titleHeader}>Datos del Producto</Text>
       </View>
       <View style={styles.viewContainerInfo}>
-          <Text style={{ color: "white", textAlign: "left" }}>
-            Todos los campos son obligatorios
-          </Text>
+        <Text style={{ color: "#666", textAlign: "left", fontSize: 13, marginBottom: 10 }}>
+          Todos los campos son obligatorios
+        </Text>
       </View>
       <ScrollView>
         <View style={styles.containerInf}>
@@ -298,7 +319,7 @@ export function AddProductsColletion() {
           <TextInput
             value={datesProducts[0].detalles}
             onChangeText={(text) => addTolist("detalles", text)}
-            style={[styles.inputInf, { height: 100, textAlignVertical: 'top' ,textTransform:"none"}]} // Ajusta el estilo para multiline
+            style={[styles.inputInf, { height: 100, textAlignVertical: 'top', textTransform: "none" }]} // Ajusta el estilo para multiline
             multiline
           />
           <View
@@ -306,91 +327,91 @@ export function AddProductsColletion() {
           >
             <Text>Valor por mayor*</Text>
           </View>
-          
+
           <TextInput
-              placeholder="$"
-              style={styles.inputInf}
-              value={valorMayor}
-              keyboardType="numeric"
-              onChangeText={(text) => {
-                setIsChecked(false)
-                addTolist('valor_costos_fijos',0)
-                addTolist("valor_mayor", cleanNumber(text) );
-                setValorMayor(formatToCOP(text))
-                setMessageSuggested([]);
-                setErrorParams(false);
-                setErrorMessage(false);
-                isNum(text);
-              }}
+            placeholder="$"
+            style={styles.inputInf}
+            value={valorMayor}
+            keyboardType="numeric"
+            onChangeText={(text) => {
+              setIsChecked(false)
+              addTolist('valor_costos_fijos', 0)
+              addTolist("valor_mayor", cleanNumber(text));
+              setValorMayor(formatToCOP(text))
+              setMessageSuggested([]);
+              setErrorParams(false);
+              setErrorMessage(false);
+              isNum(text);
+            }}
           />
           <View style={styles.priceSuggestionBox}>
-              <Text style={styles.sectionTitle}>📈 Precio sugerido de venta</Text>
-               {!percent && (
-                <Text style={{ fontSize: 12, color: '#bbb', marginVertical: 4 }}>
-                  * Si no asignas un %, se usará el porcentaje configurado en los costos fijos.
-                </Text>
-              )}
-              <View style={styles.row}>
-                <TextInput
-                  placeholder="% ganancia"
-                  style={styles.percentInput}
-                  keyboardType="numeric"
-                  value={percent.toString()}
-                  onChangeText={(text) => setPercent(text)}
-                />
-                <Pressable
-                  onPress={() => handleRequest("SRP")}
-                  style={styles.calcButton}
-                >
-                  <Text style={styles.calcButtonText}>Calcular</Text>
-                </Pressable>
-              </View>
-             
-              <Text style={styles.helpText}>
-                Se calcula el precio sugerido sumando tus costos fijos y el porcentaje de ganancia.
+            <Text style={styles.sectionTitle}>📈 Precio sugerido de venta</Text>
+            {!percent && (
+              <Text style={{ fontSize: 12, color: '#bbb', marginVertical: 4 }}>
+                * Si no asignas un %, se usará el porcentaje configurado en los costos fijos.
               </Text>
-              
-              {errorParams && (
-                <View style={styles.errorBox}>
-                  <Text style={styles.errorText}>{errorParams}</Text>
-                  <Link
-                    style={styles.linkText}
-                    href="/myStoreSettings/costsMyStoreDrawer"
-                  >
-                    Configurar costos fijos...
-                  </Link>
-                </View>
-              )}
-
-              {messageSuggested && Object.keys(messageSuggested).length > 0 && (
-                <View style={styles.resultBox}>
-                  <Text style={styles.resultText}>
-                    💰 Precio sugerido de venta: {pesosFormat(messageSuggested.Precio_sugerido_Unidad)}
-                  </Text>
-                  <Text style={styles.resultText}>
-                    🧮 Valor con CFs: {pesosFormat(messageSuggested.ValorXmayor_CF
-                  )}
-                  </Text>
-                  <Text style={styles.resultText}>
-                    📊 Ganancia estimada: {Math.round(messageSuggested.Margen * 100)}%
-                  </Text>
-
-                  <View style={styles.switchRow}>
-                    <Text style={{ color: "#fff" }}>¿Agregar CFs al producto?</Text>
-                    <Switch
-                      value={isChecked}
-                      onValueChange={(newValue) => {
-                        setIsChecked(newValue);
-                        let valorConCFs =
-                          messageSuggested.ValorXmayor_CF - datesProducts[0].valor_mayor;
-                        const valorRedondeado = parseFloat(valorConCFs.toFixed(2));
-                        addTolist("valor_costos_fijos", newValue ? valorRedondeado : 0);
-                      }}
-                    />
-                  </View>
-                </View>
-              )}
+            )}
+            <View style={styles.row}>
+              <TextInput
+                placeholder="% ganancia"
+                style={styles.percentInput}
+                keyboardType="numeric"
+                value={percent.toString()}
+                onChangeText={(text) => setPercent(text)}
+              />
+              <Pressable
+                onPress={() => handleRequest("SRP")}
+                style={styles.calcButton}
+              >
+                <Text style={styles.calcButtonText}>Calcular</Text>
+              </Pressable>
             </View>
+
+            <Text style={styles.helpText}>
+              Se calcula el precio sugerido sumando tus costos fijos y el porcentaje de ganancia.
+            </Text>
+
+            {errorParams && (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>{errorParams}</Text>
+                <Link
+                  style={styles.linkText}
+                  href="/myStoreSettings/costsMyStoreDrawer"
+                >
+                  Configurar costos fijos...
+                </Link>
+              </View>
+            )}
+
+            {messageSuggested && Object.keys(messageSuggested).length > 0 && (
+              <View style={styles.resultBox}>
+                <Text style={styles.resultText}>
+                  💰 Precio sugerido de venta: {pesosFormat(messageSuggested.Precio_sugerido_Unidad)}
+                </Text>
+                <Text style={styles.resultText}>
+                  🧮 Valor con CFs: {pesosFormat(messageSuggested.ValorXmayor_CF
+                  )}
+                </Text>
+                <Text style={styles.resultText}>
+                  📊 Ganancia estimada: {Math.round(messageSuggested.Margen * 100)}%
+                </Text>
+
+                <View style={styles.switchRow}>
+                  <Text style={{ color: "#333", fontWeight: "500" }}>¿Agregar CFs al producto?</Text>
+                  <Switch
+                    value={isChecked}
+                    onValueChange={(newValue) => {
+                      setIsChecked(newValue);
+                      let valorConCFs =
+                        messageSuggested.ValorXmayor_CF - datesProducts[0].valor_mayor;
+                      const valorRedondeado = parseFloat(valorConCFs.toFixed(2));
+                      addTolist("valor_costos_fijos", newValue ? valorRedondeado : 0);
+                    }}
+                  />
+                </View>
+              </View>
+            )}
+          </View>
 
 
           <View
@@ -412,10 +433,10 @@ export function AddProductsColletion() {
             value={valor}
             keyboardType="numeric"
             onChangeText={(text) => {
-              addTolist("valor", cleanNumber(text) );
+              addTolist("valor", cleanNumber(text));
               setValor(formatToCOP(text))
             }}
-         
+
           />
           <View
             style={styles.viewTextInput}
@@ -452,7 +473,7 @@ export function AddProductsColletion() {
               value={typeProductList.tipo_producto}
             />
 
-            
+
             <Pressable
               style={{ ...theme.pressableInputIcon }}
               onPressOut={() => {
@@ -465,19 +486,20 @@ export function AddProductsColletion() {
 
 
           </View>
-           <View
+          <View
             style={styles.viewTextInput}
           >
             <Text>Publicar*</Text>
-          <Switch 
-                  value={isPublic} 
-                  onValueChange={(newValue)=>{setIsPublic(newValue)
-                    if(newValue){
-                      addTolist('publicar',newValue)
-                    }else{
-                      addTolist('publicar',false)
-                    }
-                 }} />
+            <Switch
+              value={isPublic}
+              onValueChange={(newValue) => {
+                setIsPublic(newValue)
+                if (newValue) {
+                  addTolist('publicar', newValue)
+                } else {
+                  addTolist('publicar', false)
+                }
+              }} />
           </View>
           {errorMessage && <Text style={{ color: "red" }}>{errorMessage}</Text>}
           <ImagePickerWeb images={productImages} setImages={setProductImages} />
@@ -489,7 +511,7 @@ export function AddProductsColletion() {
             textStyle={styles.TextPressables}
             onPress={() => setStateModalCreate(true)}
           />
-           <AnimatedButton
+          <AnimatedButton
             title="Limpiar Formulario"
             onPress={() => {
               clearForm();
@@ -532,96 +554,99 @@ const styles = StyleSheet.create({
   containerPressable: { flexDirection: "row", justifyContent: "space-around", marginTop: 20 },
   pressables: { ...theme.pressable, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10 },
   TextPressables: { ...theme.textPressable },
-  viewTextInput:{alignItems: "flex-start",justifyContent: "flex-start",width: width * 0.8,paddingTop:5},
+  viewTextInput: { alignItems: "flex-start", justifyContent: "flex-start", width: width * 0.8, paddingTop: 5 },
   priceSuggestionBox: {
-  backgroundColor: "#1e1e2f",
-  padding: 15,
-  borderRadius: 12,
-  marginVertical: 15,
-  borderColor: "#5e5ce6",
-  borderWidth: 1,
-},
+    backgroundColor: "#f8f9fa",
+    padding: 15,
+    borderRadius: 12,
+    marginVertical: 15,
+    borderColor: "#e5e5ea",
+    borderWidth: 1,
+  },
 
-sectionTitle: {
-  color: "#fff",
-  fontWeight: "bold",
-  fontSize: 16,
-  marginBottom: 10,
-},
+  sectionTitle: {
+    color: "#1c1c1e",
+    fontWeight: "bold",
+    fontSize: 16,
+    marginBottom: 10,
+  },
 
-row: {
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 10,
-  marginBottom: 10,
-},
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    marginBottom: 10,
+  },
 
-percentInput: {
-  width: 80,
-  height: 40,
-  backgroundColor: "#fff",
-  borderRadius: 8,
-  paddingHorizontal: 10,
-  color: "#000",
-},
+  percentInput: {
+    width: 80,
+    height: 40,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    color: "#000",
+    borderWidth: 1,
+    borderColor: "#ccc",
+  },
 
-calcButton: {
-  backgroundColor: "#5e5ce6",
-  paddingVertical: 10,
-  paddingHorizontal: 20,
-  borderRadius: 8,
-},
+  calcButton: {
+    backgroundColor: "#5e5ce6",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
 
-calcButtonText: {
-  color: "#fff",
-  fontWeight: "bold",
-  fontSize: 14,
-},
+  calcButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
 
-helpText: {
-  color: "#bbb",
-  fontSize: 12,
-  marginBottom: 10,
-},
+  helpText: {
+    color: "#666",
+    fontSize: 12,
+    marginBottom: 10,
+  },
 
-errorBox: {
-  backgroundColor: "#2a2a2a",
-  padding: 10,
-  borderRadius: 8,
-  marginTop: 10,
-},
+  errorBox: {
+    backgroundColor: "#ffeceb",
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 10,
+  },
 
-errorText: {
-  color: "red",
-  fontSize: 13,
-  marginBottom: 5,
-},
+  errorText: {
+    color: "red",
+    fontSize: 13,
+    marginBottom: 5,
+  },
 
-linkText: {
-  color: "#5e5ce6",
-  fontSize: 13,
-  textDecorationLine: "underline",
-},
+  linkText: {
+    color: "#5e5ce6",
+    fontSize: 13,
+    textDecorationLine: "underline",
+  },
 
-resultBox: {
-  marginTop: 10,
-  backgroundColor: "#2d2d3d",
-  padding: 10,
-  borderRadius: 8,
-},
+  resultBox: {
+    marginTop: 10,
+    backgroundColor: "#e8e8f8",
+    padding: 12,
+    borderRadius: 8,
+  },
 
-resultText: {
-  color: "#eee",
-  fontSize: 14,
-  marginVertical: 2,
-},
+  resultText: {
+    color: "#333",
+    fontSize: 14,
+    marginVertical: 2,
+    fontWeight: "500",
+  },
 
-switchRow: {
-  flexDirection: "row",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginTop: 10,
-},
+  switchRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 10,
+  },
 
 });

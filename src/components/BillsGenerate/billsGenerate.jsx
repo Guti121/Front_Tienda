@@ -60,6 +60,7 @@ export default function BillsGenerate() {
           selectedData,
         });
         setBills(request.data);
+        console.log(request.data,":Datos de la factura")
 
         setError(false);
       }
