@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Animated,
   FlatList,
   Image,
   Pressable,
@@ -20,18 +21,11 @@ import { mediaUrl } from "../../api/config";
 import { setEmpresa } from "../../redux/userSlice";
 import { useCart } from "./CartContext";
 import { useTheme } from "../../theme/ThemeProvider";
-import {
-  Badge,
-  Chip,
-  EmptyState,
-  Icon,
-  Loader,
-  Text,
-  useToast,
-} from "../../ui";
+import { Badge, EmptyState, Icon, Loader, Text, useToast } from "../../ui";
 import { pesosFormat } from "../icons/functionFormat";
 
 const MAX_W = 1160;
+const NAV_H = 52;
 const FALLBACK_IMG =
   "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
 
@@ -44,13 +38,16 @@ export default function PrincipalCatalog({ name }) {
   const dispatch = useDispatch();
   const toast = useToast();
   const { colors, spacing, radii, shadow } = useTheme();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const { cartItems, addToCart } = useCart();
 
   const cols = width >= 1100 ? 4 : width >= 720 ? 3 : 2;
   const gutter = spacing.sm;
 
   const [tipo, setTipo] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuMounted, setMenuMounted] = useState(false);
+  const menuAnim = useRef(new Animated.Value(0)).current;
 
   const companyQ = useQuery({
     queryKey: ["catalog", "company", name],
@@ -62,6 +59,23 @@ export default function PrincipalCatalog({ name }) {
   useEffect(() => {
     if (company) dispatch(setEmpresa(company));
   }, [company, dispatch]);
+
+  useEffect(() => {
+    if (menuOpen) {
+      setMenuMounted(true);
+      Animated.timing(menuAnim, {
+        toValue: 1,
+        duration: 160,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(menuAnim, {
+        toValue: 0,
+        duration: 130,
+        useNativeDriver: true,
+      }).start(({ finished }) => finished && setMenuMounted(false));
+    }
+  }, [menuOpen, menuAnim]);
 
   const productsQ = useInfiniteQuery({
     queryKey: ["catalog", "list", name, tipo],
@@ -84,6 +98,7 @@ export default function PrincipalCatalog({ name }) {
   );
   const types = typesQ.data?.results ?? [];
   const cartCount = cartItems.reduce((n, it) => n + (it.cantidad || 1), 0);
+  const activeType = types.find((t) => t.id === tipo);
 
   const openProduct = (id) =>
     router.push({ pathname: "/catalog/productDetail", params: { id, name } });
@@ -98,6 +113,11 @@ export default function PrincipalCatalog({ name }) {
       cantidad: 1,
     });
     toast.success("Añadido al carrito");
+  };
+
+  const pickType = (id) => {
+    setTipo(id);
+    setMenuOpen(false);
   };
 
   const renderItem = ({ item }) => {
@@ -176,6 +196,7 @@ export default function PrincipalCatalog({ name }) {
         alignItems: "center",
         paddingHorizontal: spacing.lg,
         paddingTop: spacing.xl,
+        paddingBottom: spacing.lg,
       }}
     >
       <View
@@ -216,30 +237,14 @@ export default function PrincipalCatalog({ name }) {
           </Text>
         </View>
       ) : null}
-
-      {types.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{
-            gap: spacing.sm,
-            paddingVertical: spacing.lg,
-          }}
-          style={{ alignSelf: "stretch", marginTop: spacing.sm }}
-        >
-          <Chip label="Todos" selected={!tipo} onPress={() => setTipo(null)} />
-          {types.map((t) => (
-            <Chip
-              key={t.id}
-              label={t.tipo_producto}
-              selected={tipo === t.id}
-              onPress={() => setTipo(tipo === t.id ? null : t.id)}
-            />
-          ))}
-        </ScrollView>
-      ) : (
-        <View style={{ height: spacing.lg }} />
-      )}
+      {activeType ? (
+        <View style={{ marginTop: spacing.md }}>
+          <Badge
+            label={`Categoría: ${activeType.tipo_producto}`}
+            tone="brand"
+          />
+        </View>
+      ) : null}
     </View>
   );
 
@@ -288,24 +293,49 @@ export default function PrincipalCatalog({ name }) {
     </View>
   ) : null;
 
+  const catRow = (key, label, selected, onPress) => (
+    <Pressable
+      key={key}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingVertical: spacing.md,
+        paddingHorizontal: spacing.xs,
+        backgroundColor: pressed ? colors.surfaceAlt : "transparent",
+        borderRadius: radii.sm,
+      })}
+    >
+      <Text
+        weight={selected ? "bold" : "regular"}
+        color={selected ? "primary" : "text"}
+      >
+        {label}
+      </Text>
+      {selected ? <Icon name="check" size={18} color={colors.primary} /> : null}
+    </Pressable>
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      {/* Barra superior tipo navbar de tienda */}
+      {/* Navbar de tienda */}
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
-          justifyContent: "space-between",
+          gap: spacing.sm,
           paddingHorizontal: spacing.lg,
-          height: 52,
+          height: NAV_H,
           backgroundColor: colors.surface,
           borderBottomWidth: 1,
           borderBottomColor: colors.border,
-          zIndex: 10,
+          zIndex: 30,
         }}
       >
         <View
           style={{
+            flex: 1,
             flexDirection: "row",
             alignItems: "center",
             gap: spacing.sm,
@@ -315,10 +345,41 @@ export default function PrincipalCatalog({ name }) {
             source={{ uri: mediaUrl(company?.url_logo) || FALLBACK_IMG }}
             style={{ width: 26, height: 26, borderRadius: radii.pill }}
           />
-          <Text weight="bold" numberOfLines={1}>
+          <Text weight="bold" numberOfLines={1} style={{ flexShrink: 1 }}>
             {company?.company || name}
           </Text>
         </View>
+
+        {types.length > 0 ? (
+          <Pressable
+            onPress={() => setMenuOpen((v) => !v)}
+            hitSlop={6}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 2,
+              paddingVertical: spacing.xs,
+              paddingHorizontal: spacing.sm,
+              borderRadius: radii.pill,
+              borderWidth: 1,
+              borderColor: tipo || menuOpen ? colors.primary : colors.border,
+              backgroundColor:
+                tipo || menuOpen ? colors.primarySoft : colors.surface,
+            }}
+          >
+            <Icon
+              name="shape-outline"
+              size={16}
+              color={tipo || menuOpen ? colors.primary : colors.textMuted}
+            />
+            <Icon
+              name={menuOpen ? "chevron-up" : "chevron-down"}
+              size={16}
+              color={tipo || menuOpen ? colors.primary : colors.textMuted}
+            />
+          </Pressable>
+        ) : null}
+
         <Pressable
           onPress={() => router.push("/catalog/car")}
           hitSlop={8}
@@ -389,6 +450,86 @@ export default function PrincipalCatalog({ name }) {
         onEndReachedThreshold={0.5}
         renderItem={renderItem}
       />
+
+      {/* Menú desplegable de categorías, anclado bajo el navbar */}
+      {menuMounted ? (
+        <>
+          <Animated.View
+            style={{
+              position: "absolute",
+              top: NAV_H,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: colors.overlay,
+              opacity: menuAnim,
+              zIndex: 20,
+            }}
+          >
+            <Pressable style={{ flex: 1 }} onPress={() => setMenuOpen(false)} />
+          </Animated.View>
+
+          <Animated.View
+            style={{
+              position: "absolute",
+              top: NAV_H,
+              left: 0,
+              right: 0,
+              zIndex: 25,
+              backgroundColor: colors.surface,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.border,
+              opacity: menuAnim,
+              transform: [
+                {
+                  translateY: menuAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-8, 0],
+                  }),
+                },
+              ],
+              ...shadow(3),
+            }}
+          >
+            <View
+              style={{
+                width: "100%",
+                maxWidth: MAX_W,
+                alignSelf: "center",
+                paddingHorizontal: spacing.lg,
+                paddingTop: spacing.md,
+                paddingBottom: spacing.sm,
+              }}
+            >
+              <Text
+                variant="caption"
+                weight="bold"
+                muted
+                style={{ letterSpacing: 1 }}
+              >
+                CATEGORÍAS
+              </Text>
+              <ScrollView
+                style={{ maxHeight: height * 0.55, marginTop: spacing.xs }}
+                showsVerticalScrollIndicator={false}
+              >
+                {catRow("all", "Todas", !tipo, () => pickType(null))}
+                {types.map((t) => (
+                  <View key={t.id}>
+                    <View
+                      style={{ height: 1, backgroundColor: colors.border }}
+                    />
+                    {catRow(t.id, t.tipo_producto, tipo === t.id, () =>
+                      pickType(t.id),
+                    )}
+                  </View>
+                ))}
+                <View style={{ height: spacing.xs }} />
+              </ScrollView>
+            </View>
+          </Animated.View>
+        </>
+      ) : null}
     </View>
   );
 }
