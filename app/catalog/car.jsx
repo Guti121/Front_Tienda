@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useSelector } from "react-redux";
 
 import { useCart } from "../../src/components/catalog/CartContext";
+import { mediaUrl } from "../../src/api/config";
 import { pesosFormat } from "../../src/components/icons/functionFormat";
 import { isWeb } from "../../src/components/token/localstorage";
 import { useTheme } from "../../src/theme/ThemeProvider";
@@ -68,9 +69,7 @@ export default function CartScreen() {
           />
         }
         renderItem={({ item }) => {
-          const uri = item?.imagenes?.[0]?.imagen?.trim()
-            ? item.imagenes[0].imagen
-            : FALLBACK_IMG;
+          const uri = mediaUrl(item?.imagenes?.[0]?.imagen) || FALLBACK_IMG;
           return (
             <Card level={0} style={{ marginBottom: spacing.sm }}>
               <Pressable

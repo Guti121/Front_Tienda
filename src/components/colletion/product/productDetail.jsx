@@ -13,6 +13,7 @@ import {
   downloadBarcodePdf,
   SIZE_OPTIONS,
 } from "../../../features/products/barcodePdf";
+import { mediaUrl } from "../../../api/config";
 import { useTheme } from "../../../theme/ThemeProvider";
 import {
   Badge,
@@ -81,7 +82,7 @@ export default function DetailProduct({ id }) {
     enabled: !!id,
   });
 
-  const barcodeUrl = barcode?.barcode || FALLBACK_IMG;
+  const barcodeUrl = mediaUrl(barcode?.barcode) || FALLBACK_IMG;
 
   const onDelete = async () => {
     setDeleting(true);
@@ -149,9 +150,12 @@ export default function DetailProduct({ id }) {
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={{ flexDirection: "row", gap: spacing.sm }}>
               {imgs.map((img, i) => (
-                <Pressable key={i} onPress={() => setSelectedImage(img.imagen)}>
+                <Pressable
+                  key={i}
+                  onPress={() => setSelectedImage(mediaUrl(img.imagen))}
+                >
                   <Image
-                    source={{ uri: img.imagen }}
+                    source={{ uri: mediaUrl(img.imagen) }}
                     style={{
                       width: 120,
                       height: 150,

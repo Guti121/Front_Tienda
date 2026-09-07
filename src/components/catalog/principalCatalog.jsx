@@ -15,6 +15,7 @@ import {
   listCatalog,
   listCatalogTypes,
 } from "../../api/catalog";
+import { mediaUrl } from "../../api/config";
 import { setEmpresa } from "../../redux/userSlice";
 import { useCart } from "./CartContext";
 import { useTheme } from "../../theme/ThemeProvider";
@@ -80,9 +81,7 @@ export default function PrincipalCatalog({ name }) {
   const company = companyQ.data;
 
   const renderItem = ({ item }) => {
-    const uri = item?.image_principal?.trim()
-      ? item.image_principal
-      : FALLBACK_IMG;
+    const uri = mediaUrl(item?.image_principal) || FALLBACK_IMG;
     return (
       <Pressable
         onPress={() =>
@@ -143,7 +142,7 @@ export default function PrincipalCatalog({ name }) {
                 }}
               >
                 <Image
-                  source={{ uri: company?.url_logo || FALLBACK_IMG }}
+                  source={{ uri: mediaUrl(company?.url_logo) || FALLBACK_IMG }}
                   style={{ width: 64, height: 64, borderRadius: 32 }}
                 />
                 <View style={{ flex: 1 }}>

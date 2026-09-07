@@ -9,6 +9,7 @@ import {
   deleteCompany,
 } from "../../../api/store";
 import { ApiError } from "../../../api/http";
+import { mediaUrl } from "../../../api/config";
 import { deleteTokenStorage } from "../../token/token";
 import ImagePickerWeb from "../../colletion/componentWebimage";
 import { isWeb } from "../../token/localstorage";
@@ -118,7 +119,7 @@ export default function DetailsMyStore() {
       <View style={{ gap: spacing.lg }}>
         <Card level={1} style={{ alignItems: "center", gap: spacing.sm }}>
           <Image
-            source={{ uri: form?.url_logo || FALLBACK_LOGO }}
+            source={{ uri: mediaUrl(form?.url_logo) || FALLBACK_LOGO }}
             style={{ width: 88, height: 88, borderRadius: 44 }}
           />
           {editable ? (

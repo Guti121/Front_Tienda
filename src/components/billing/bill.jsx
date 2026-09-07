@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 
 import { searchAvailableProducts } from "../../api/products";
+import { mediaUrl } from "../../api/config";
 import { addToCart, useCart } from "../../hooks/useCart";
 import { useTheme } from "../../theme/ThemeProvider";
 import {
@@ -71,9 +72,7 @@ export default function Bill() {
   };
 
   const renderItem = ({ item }) => {
-    const uri = item?.imagen_principal?.trim()
-      ? item.imagen_principal
-      : FALLBACK_IMG;
+    const uri = mediaUrl(item?.imagen_principal) || FALLBACK_IMG;
     const sinStock = !item.unidades_disponibles;
     return (
       <Pressable

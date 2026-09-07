@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useInfiniteQuery } from "@tanstack/react-query";
 
 import { listProductsAdmin } from "../../../api/products";
+import { mediaUrl } from "../../../api/config";
 import { useTheme } from "../../../theme/ThemeProvider";
 import {
   Badge,
@@ -59,9 +60,7 @@ export default function ProductView() {
   );
 
   const renderItem = ({ item }) => {
-    const uri = item?.imagen_principal?.trim()
-      ? item.imagen_principal
-      : FALLBACK_IMG;
+    const uri = mediaUrl(item?.imagen_principal) || FALLBACK_IMG;
     const agotado = !item.unidades_disponibles;
     return (
       <Pressable

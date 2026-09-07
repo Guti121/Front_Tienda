@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 
 import { getCatalogProduct } from "../../api/catalog";
+import { mediaUrl } from "../../api/config";
 import { useCart } from "./CartContext";
 import HorizontalImageScroller from "./stylesCatalogo/scrollImages";
 import ImageModal from "./stylesCatalogo/modalImage";
@@ -51,7 +52,9 @@ export default function DetailProductCatalog({ productId, name }) {
     );
   }
 
-  const imgs = (data.imagenes ?? []).map((i) => i.imagen).filter(Boolean);
+  const imgs = (data.imagenes ?? [])
+    .map((i) => mediaUrl(i.imagen))
+    .filter(Boolean);
 
   return (
     <Screen scroll padded={false}>
