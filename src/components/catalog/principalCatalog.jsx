@@ -75,6 +75,7 @@ function CatalogCard({ item, width, gutter, onOpen, onQuickAdd }) {
         onPress={() => onOpen(item.id)}
         onPressIn={() => press(cardScale, 0.97, 120)}
         onPressOut={() => press(cardScale, 1, 140)}
+        pressRetentionOffset={{ top: 12, bottom: 12, left: 12, right: 12 }}
       >
         <Animated.View
           style={[
@@ -107,7 +108,7 @@ function CatalogCard({ item, width, gutter, onOpen, onQuickAdd }) {
             ) : null}
             <Pressable
               onPress={() => onQuickAdd(item)}
-              onPressIn={() => press(addScale, 0.88, 90)}
+              onPressIn={() => press(addScale, 0.9, 90)}
               onPressOut={() => press(addScale, 1, 120)}
               hitSlop={8}
               style={{
@@ -135,16 +136,21 @@ function CatalogCard({ item, width, gutter, onOpen, onQuickAdd }) {
             </Pressable>
           </View>
 
-          <View style={{ padding: spacing.md, gap: 2 }}>
+          <View style={{ padding: spacing.md, gap: spacing.xxs }}>
             {item.tipo_producto ? (
-              <Text variant="caption" muted style={{ letterSpacing: 0.5 }}>
+              <Text variant="caption" muted style={{ letterSpacing: 1 }}>
                 {String(item.tipo_producto).toUpperCase()}
               </Text>
             ) : null}
             <Text weight="medium" numberOfLines={1}>
               {item.nombre}
             </Text>
-            <Text variant="subtitle" weight="bold" color="primary">
+            <Text
+              variant="subtitle"
+              weight="bold"
+              color="primary"
+              style={{ marginTop: spacing.xxs }}
+            >
               {pesosFormat(item.valor)}
             </Text>
           </View>
@@ -177,7 +183,7 @@ export default function PrincipalCatalog({ name }) {
     if (menuOpen) setMenuMounted(true);
     menu.value = withTiming(
       menuOpen ? 1 : 0,
-      { duration: menuOpen ? 160 : 120, easing: EASE_OUT },
+      { duration: menuOpen ? 180 : 130, easing: EASE_OUT },
       (finished) => {
         "worklet";
         if (finished && !menuOpen) runOnJS(setMenuMounted)(false);
@@ -329,12 +335,7 @@ export default function PrincipalCatalog({ name }) {
         gap: spacing.sm,
       }}
     >
-      <Text
-        variant="caption"
-        weight="bold"
-        muted
-        style={{ letterSpacing: 0.5 }}
-      >
+      <Text variant="caption" weight="bold" muted style={{ letterSpacing: 1 }}>
         CONTACTO
       </Text>
       {[

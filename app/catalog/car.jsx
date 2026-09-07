@@ -1,4 +1,5 @@
-import { FlatList, Image, Linking, Pressable, View } from "react-native";
+import { Image, Linking, Pressable, View } from "react-native";
+import Animated, { LinearTransition } from "react-native-reanimated";
 import { router } from "expo-router";
 import { useSelector } from "react-redux";
 
@@ -58,9 +59,11 @@ export default function CartScreen() {
         <Text weight="bold">Tu carrito{count ? ` · ${count}` : ""}</Text>
       </View>
 
-      <FlatList
+      <Animated.FlatList
         data={cartItems}
         keyExtractor={(item) => String(item.id)}
+        // Al quitar una línea, las demás cierran el hueco (evita el salto seco).
+        itemLayoutAnimation={LinearTransition.duration(180)}
         contentContainerStyle={{
           width: "100%",
           maxWidth: MAX_W,

@@ -105,7 +105,7 @@ export default function DetailProductCatalog({ productId, name }) {
           variant="caption"
           muted
           weight="bold"
-          style={{ letterSpacing: 0.6 }}
+          style={{ letterSpacing: 1 }}
         >
           {String(data.tipo_producto).toUpperCase()}
         </Text>
@@ -122,7 +122,7 @@ export default function DetailProductCatalog({ productId, name }) {
           variant="caption"
           weight="bold"
           muted
-          style={{ letterSpacing: 0.5 }}
+          style={{ letterSpacing: 1 }}
         >
           DESCRIPCIÓN
         </Text>
