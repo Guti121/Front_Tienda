@@ -1,97 +1,88 @@
-import { Camera, CameraView } from "expo-camera";
-import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { expiredGetToken } from "../../src/components/axios/generalAxiosRequest";
+import { useState } from "react";
+import { View } from "react-native";
+import { CameraView, useCameraPermissions } from "expo-camera";
+
+import { validateAllyQr } from "../../src/api/store";
 import { deleteTokenStorage } from "../../src/components/token/token";
-import { handleReadQrCode } from "../../src/components/settingsStore/axiosRequest";
-import theme from "../../src/components/themeStyles/theme";
-import { router } from "expo-router";
+import { useUserCAWAuthRedirect } from "../../src/redux/viewsPermissions";
+import { useTheme } from "../../src/theme/ThemeProvider";
+import { Button, Card, Screen, Text, useToast } from "../../src/ui";
 
+export default function AddToCompanyDrawer() {
+  useUserCAWAuthRedirect();
+  const { spacing, radii } = useTheme();
+  const toast = useToast();
+  const [permission, requestPermission] = useCameraPermissions();
 
-//Scanear QrCode
-export default function AddToCompanyDrawer(){
-    const [hasPermission, setHasPermission] = useState(null);
-    const [scanned ,setScanned] = useState(false)
-    const [requestVerification,setRequestVerification] = useState(false)
-    const [error,setError] = useState(false)
-    
-    useEffect(()=>{
-        const getCameraPermissions = async() =>{
-            const {status} = await Camera.requestCameraPermissionsAsync();
-            setHasPermission(status ==="granted");
-        }
-        getCameraPermissions()
-    },[])
-    
-    //Revisamos Si hay un permiso aprovado
-    if (hasPermission === null) {
-        return <Text>Requesting for camera permission</Text>;
-      }
-      if (hasPermission === false) {
-        return <Text>No access to camera</Text>;
-      }
+  const [scanned, setScanned] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(null);
 
-    
-    const handleScannedData = async (scannedData) => {
-        try {
-          const token = await expiredGetToken();
-          if (!token) {
-            deleteTokenStorage();
-            router.replace("/login");
-          }
-      
-          // 1. Parse the QR content (data is a JSON string)
-          const parsedData = JSON.parse(scannedData.data); // <- This is key!
-          const qrToken = parsedData.token;
-      
-      
-          // 2. Send it to your backend
-          let request = await handleReadQrCode(token, qrToken);
-          setRequestVerification(request.data.message);
-          setTimeout(()=>{
-            deleteTokenStorage();
-            router.replace("/login")
-          },500)
+  const onScan = async ({ data }) => {
+    setScanned(true);
+    setBusy(true);
+    try {
+      const parsed = JSON.parse(data);
+      const res = await validateAllyQr(parsed.token);
+      setDone(res?.message || "Vinculación exitosa.");
+      toast.success("Vinculado a la tienda. Vuelve a iniciar sesión.");
+      setTimeout(() => deleteTokenStorage(), 1200); // clearSession + /login
+    } catch {
+      toast.error("El código QR no es válido.");
+      setBusy(false);
+    }
+  };
 
-        } catch (error) {
-          setError(error?.message || 'Ocurrio un error con el QR')
-        }
-      };
-      
-    return(
-    <View style={{flex:1}}> 
-        {requestVerification && <View style={{backgroundColor:"rgb(60, 196, 60)" ,width:'100%',height:'auto', justifyContent:'center',alignItems:'center',padding:10}}> <Text style={styles.buttomText}>{requestVerification}</Text></View>}
-        {error && 
-        <View style={{backgroundColor:"rgb(60, 196, 60)" ,width:'100%',height:'auto', justifyContent:'center',alignItems:'center',padding:10}}>
-          <Text style={styles.buttomText}>{error}</Text>  
-        </View>}
-        {scanned ?
-        <View style={{flex:1,alignItems:'center',justifyContent:'center'}}>
-            <Pressable style={styles.pressableScanned} onPressOut={()=>{setScanned(false),setError(false),setRequestVerification(false)}}>
-                <Text style={styles.buttomText}>Escanear de nuevo</Text>
-            </Pressable>
-        </View>:
-        <View style={{flex:1}}>
+  return (
+    <Screen>
+      <View style={{ gap: spacing.lg }}>
+        <Card level={0}>
+          <Text weight="bold">Vincularme a una tienda</Text>
+          <Text muted variant="small" style={{ marginTop: spacing.xs }}>
+            Escanea el código QR que te compartió el dueño de la tienda. Al
+            vincularte tendrás que iniciar sesión de nuevo.
+          </Text>
+        </Card>
+
+        {done ? (
+          <Card level={1}>
+            <Text color="success" weight="bold">
+              {done}
+            </Text>
+          </Card>
+        ) : !permission?.granted ? (
+          <Card level={0} style={{ gap: spacing.sm }}>
+            <Text muted>Necesitamos la cámara para escanear el QR.</Text>
+            <Button title="Permitir cámara" onPress={requestPermission} />
+          </Card>
+        ) : (
+          <View
+            style={{
+              height: 300,
+              borderRadius: radii.lg,
+              overflow: "hidden",
+              backgroundColor: "#000",
+            }}
+          >
             <CameraView
-                    onBarcodeScanned={(scannedData)=>{scanned ? undefined :
-                    (handleScannedData(scannedData),setScanned(true))}}
-                    barcodeScannerSettings={
-                        {barcodeTypes:["qr"]}
-                    }
-                    style={StyleSheet.absoluteFillObject}
-                    />
-        </View>}
-    </View>)
-}
+              style={{ flex: 1 }}
+              barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+              onBarcodeScanned={scanned || busy ? undefined : onScan}
+            />
+          </View>
+        )}
 
-const styles= StyleSheet.create({
-  pressableScanned:{
-     
-    ...theme.pressable
-  },
-  buttomText:{
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-  }
-})
+        {scanned && !done ? (
+          <Button
+            title="Escanear de nuevo"
+            variant="ghost"
+            onPress={() => {
+              setScanned(false);
+              setBusy(false);
+            }}
+          />
+        ) : null}
+      </View>
+    </Screen>
+  );
+}

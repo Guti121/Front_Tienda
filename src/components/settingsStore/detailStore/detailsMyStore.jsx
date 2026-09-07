@@ -1,280 +1,201 @@
-import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
-import {
-  Image,
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import {
-  handleDeleteCompany,
-  handleListDetailStore,
-  handleUpdateStore,
-} from "../axiosRequest";
-import { expiredGetToken } from "../../axios/generalAxiosRequest";
-import { deleteTokenStorage } from "../../token/token";
-import theme, { width } from "../../themeStyles/theme";
-import {
-  checkIcon,
-  iconDelete,
-  iconEdit,
-  iconError,
-} from "../../icons/icons";
-import { BarNotification } from "../../icons/barNotification";
+import { useEffect, useState } from "react";
+import { Image, View } from "react-native";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSelector } from "react-redux";
-import { ModalConfirm } from "../../icons/modalConfirm";
+
+import {
+  retrieveCompany,
+  updateCompany,
+  deleteCompany,
+} from "../../../api/store";
+import { ApiError } from "../../../api/http";
+import { deleteTokenStorage } from "../../token/token";
 import ImagePickerWeb from "../../colletion/componentWebimage";
 import { isWeb } from "../../token/localstorage";
+import { useTheme } from "../../../theme/ThemeProvider";
+import {
+  Button,
+  Card,
+  Icon,
+  Loader,
+  Screen,
+  Sheet,
+  Text,
+  TextField,
+  useToast,
+} from "../../../ui";
+
+const FIELDS = [
+  ["nit", "NIT"],
+  ["company", "Compañía"],
+  ["name", "Nombre"],
+  ["phone", "Teléfono"],
+  ["email", "Correo electrónico"],
+  ["direction", "Dirección"],
+  ["municipality", "Municipio"],
+];
+
+const FALLBACK_LOGO =
+  "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
 
 export default function DetailsMyStore() {
+  const { colors, spacing } = useTheme();
+  const toast = useToast();
+  const queryClient = useQueryClient();
   const user = useSelector((state) => state.user.user);
-  const [formData, setFormData] = useState({});
-  const [originalData, setOriginalData] = useState({});
+  const isCreator = user?.typeUser === "creator";
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["company"],
+    queryFn: retrieveCompany,
+  });
+
+  const [form, setForm] = useState({});
   const [editable, setEditable] = useState(false);
-  const [error, setError] = useState(false);
-  const [color, setColor] = useState(false);
-  const [notification, setNotification] = useState(false);
-  const [images, setImages] = useState([]); // ahora correctamente inicializado como array
+  const [images, setImages] = useState([]);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const [stateModal, setStateModal] = useState(false);
-  const [stateModalDelete, setStateModalDelete] = useState(false);
+  useEffect(() => {
+    if (data) setForm(data);
+  }, [data]);
 
-  const handleRequest = async () => {
-    try {
-      const token = await expiredGetToken();
-      if (!token) {
-        deleteTokenStorage();
-        router.replace("/login");
-        return;
-      }
-      let request = await handleListDetailStore(token);
-      setFormData(request.data);
-      setOriginalData(request.data);
-    } catch (error) {
-      console.error("Error loading store:", error);
-    }
-  };
-
-  useFocusEffect(
-    useCallback(() => {
-      handleRequest();
-    }, [])
-  );
-
-  const handleChangeText = (field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleSaveChanges = async () => {
-    if (!editable) {
-      setEditable(true);
-    } else if (stateModal) {
-      const token = await expiredGetToken();
-      if (!token) {
-        deleteTokenStorage();
-        return;
-      }
-
-      const updatedFields = Object.keys(formData).reduce((acc, key) => {
-        if (formData[key] !== originalData[key]) {
-          acc[key] = formData[key];
-        }
-        return acc;
-      }, {});
-
-      const formDataToSend = new FormData();
-
-      // Añadir campos modificados
-      Object.entries(updatedFields).forEach(([key, value]) => {
-        formDataToSend.append(key, value);
+  const save = useMutation({
+    mutationFn: () => {
+      const changed = Object.keys(form).filter((k) => form[k] !== data?.[k]);
+      const fd = new FormData();
+      changed.forEach((k) => fd.append(k, form[k] ?? ""));
+      images.forEach((img) => {
+        if (isWeb && img?.file) fd.append("url_logo", img.file);
+        else if (!isWeb && img?.uri)
+          fd.append("url_logo", {
+            uri: img.uri,
+            name: "logo.jpg",
+            type: "image/jpeg",
+          });
       });
-
-      // Añadir imágenes nuevas (solo si hay imágenes nuevas seleccionadas)
-      if (Array.isArray(images)) {
-        images.forEach((img,index) => {
-          if (isWeb){
-            if (img.file) {
-              formDataToSend.append("url_logo", img.file);
-            }
-          }else{
-           const uriParts = img.uri.split(".");
-                    const fileType = uriParts[uriParts.length - 1];
-          
-                    formData.append("imagenes", {
-                      uri: img.uri,
-                      name: `image_${index}.${fileType}`,
-                      type: `image/${fileType}`,
-                    });
-
-        }
-        });
-       
-      }
-
-      try {
-        let request = await handleUpdateStore(token, formDataToSend);
-        setError("Se modificaron los campos");
-        setColor("");
-        errorBar();
-        setOriginalData(request);
-      } catch (error) {
-        setError(error.message);
-        setColor("red");
-        errorBar();
-      }
-
+      return updateCompany(fd);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["company"] });
       setEditable(false);
-    } else {
-      setStateModal(true);
-    }
-  };
+      setImages([]);
+      toast.success("Datos actualizados");
+    },
+    onError: (err) =>
+      toast.error(
+        err instanceof ApiError ? err.message : "No se pudo actualizar.",
+      ),
+  });
 
-  const deleteCompany = async () => {
-    try {
-      const token = await expiredGetToken();
-      if (!token) {
-        deleteTokenStorage();
-        return;
-      }
-      await handleDeleteCompany(token);
-    } catch (error) {
-      setError(error.message);
-      errorBar();
-    }
-  };
+  const del = useMutation({
+    mutationFn: deleteCompany,
+    onSuccess: () => {
+      setConfirmDelete(false);
+      toast.success("Compañía eliminada");
+      setTimeout(() => deleteTokenStorage(), 800);
+    },
+    onError: (err) => {
+      setConfirmDelete(false);
+      toast.error(
+        err instanceof ApiError ? err.message : "No se pudo eliminar.",
+      );
+    },
+  });
 
-  const errorBar = () => {
-    setNotification(true);
-    setTimeout(() => {
-      setNotification(false);
-    }, 1500);
-  };
-
-  const onCloseModalUpdate = () => {
-    setStateModal(false);
-    setEditable(false);
-    handleRequest();
-  };
-
-  const onCloseModalDelete = () => {
-    setStateModalDelete(false);
-  };
+  if (isLoading) return <Loader label="Cargando…" />;
+  if (isError) {
+    return (
+      <Screen>
+        <Text color="danger" center>
+          No se pudieron cargar los datos de la tienda.
+        </Text>
+      </Screen>
+    );
+  }
 
   return (
-    <SafeAreaView style={{ flex: 1, ...theme.backgroundColorPrincipal }}>
-      <View style={{ flex: 1, margin: 10, padding: 10, borderRadius: 20 }}>
-        {notification && (
-          <BarNotification
-            icon={iconError({ size: 20 })}
-            message={error}
-            color={color}
+    <Screen scroll>
+      <View style={{ gap: spacing.lg }}>
+        <Card level={1} style={{ alignItems: "center", gap: spacing.sm }}>
+          <Image
+            source={{ uri: form?.url_logo || FALLBACK_LOGO }}
+            style={{ width: 88, height: 88, borderRadius: 44 }}
           />
-        )}
-        <ScrollView style={{ flex: 1 }}>
-          <View style={{ alignItems: "center" }}>
-            <Text>Photo Profile</Text>
-            {editable && (
-            <ImagePickerWeb images={images} setImages={setImages} />)}
-            <Image
-              source={{
-                uri:
-                  formData?.url_logo ||
-                  "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png",
-              }}
-              style={{
-                width: 80,
-                height: 80,
-                borderRadius: 40,
-                marginBottom: 10,
-              }}
+          {editable ? (
+            <ImagePickerWeb images={images} setImages={setImages} />
+          ) : null}
+        </Card>
+
+        <Card level={0} style={{ gap: spacing.md }}>
+          {FIELDS.map(([key, label]) => (
+            <TextField
+              key={key}
+              label={label}
+              value={form?.[key] ?? ""}
+              onChangeText={(t) => setForm((p) => ({ ...p, [key]: t }))}
+              editable={editable}
+              inputStyle={!editable ? { color: colors.textMuted } : undefined}
             />
-          </View>
-          <View style={{ alignItems: "center" }}>
-            {[
-              { label: "Nit", key: "nit" },
-              { label: "Compañia", key: "company" },
-              { label: "Nombre", key: "name" },
-              { label: "Celular o Teléfono", key: "phone" },
-              { label: "Correo Electrónico", key: "email" },
-              { label: "Dirección", key: "direction" },
-              { label: "Municipio", key: "municipality" },
-            ].map(({ label, key }) => (
-              <View key={key} style={styles.viewTextInput}>
-                <Text>{label}</Text>
-                <TextInput
-                  editable={editable}
-                  style={[
-                    styles.textInput,
-                    !editable && { backgroundColor: "#ddd", color: "#888" },
-                  ]}
-                  value={formData?.[key] || ""}
-                  onChangeText={(text) => handleChangeText(key, text)}
-                />
-              </View>
-            ))}
-            {user.typeUser === "creator" && (
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginVertical: 10,
-                }}
-              >
-                <Pressable
-                  onPress={() => handleSaveChanges()}
-                  style={{ marginHorizontal: 20 }}
-                >
-                  {!editable ? iconEdit({ color: "black" }) : checkIcon()}
-                </Pressable>
-                {!editable && (
-                  <Pressable
-                    onPress={() => setStateModalDelete(true)}
-                    style={{ marginHorizontal: 20 }}
-                  >
-                    {iconDelete("red")}
-                  </Pressable>
-                )}
-              </View>
+          ))}
+        </Card>
+
+        {isCreator ? (
+          <View style={{ gap: spacing.md }}>
+            {editable ? (
+              <Button
+                title="Guardar cambios"
+                loading={save.isPending}
+                onPress={() => save.mutate()}
+              />
+            ) : (
+              <Button
+                title="Editar"
+                variant="secondary"
+                left={
+                  <Icon name="pencil-outline" size={18} color={colors.text} />
+                }
+                onPress={() => setEditable(true)}
+              />
             )}
+            {!editable ? (
+              <Button
+                title="Eliminar compañía"
+                variant="danger"
+                left={
+                  <Icon
+                    name="trash-can-outline"
+                    size={18}
+                    color={colors.textOnBrand}
+                  />
+                }
+                onPress={() => setConfirmDelete(true)}
+              />
+            ) : null}
           </View>
-        </ScrollView>
+        ) : null}
       </View>
 
-      <ModalConfirm
-        state={stateModal}
-        message={"¿Quieres modificar los datos de la compañia?"}
-        handleIPositiveButton={handleSaveChanges}
-        onClose={onCloseModalUpdate}
-      />
-
-      <ModalConfirm
-        state={stateModalDelete}
-        message={
-          "¿Quiere eliminar tu compañía? Si eliminas la compañía, no podrás recuperar tus datos. Todos los datos asociados a tu tienda desaparecerán de nuestro sistema."
-        }
-        handleIPositiveButton={deleteCompany}
-        onClose={onCloseModalDelete}
-      />
-    </SafeAreaView>
+      <Sheet
+        visible={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        title="Eliminar compañía"
+      >
+        <Text muted>
+          Se eliminarán todos los datos de tu tienda de forma permanente: esta
+          acción no se puede deshacer.
+        </Text>
+        <Button
+          title="Sí, eliminar todo"
+          variant="danger"
+          loading={del.isPending}
+          onPress={() => del.mutate()}
+        />
+        <Button
+          title="Cancelar"
+          variant="secondary"
+          onPress={() => setConfirmDelete(false)}
+        />
+      </Sheet>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  viewTextInput: { margin: 5 },
-  textInput: {
-    ...theme.textInputGlobal,
-    height: 40,
-    marginBottom: 10,
-    width: width * 0.8,
-    padding: 5,
-    textTransform: "capitalize",
-  },
-});

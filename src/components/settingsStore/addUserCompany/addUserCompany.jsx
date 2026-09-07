@@ -1,170 +1,171 @@
-import { FlatList, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View, ActivityIndicator } from "react-native";
-import theme, { width } from "../../themeStyles/theme";
-import { checkIcon, iconAddUser, iconDelete } from "../../icons/icons";
+import { useMemo, useState } from "react";
+import { FlatList, View } from "react-native";
 import { router } from "expo-router";
-import { handleDeleteUserCompany, handleListUsersCompany } from "../axiosRequest";
-import { useEffect, useState } from "react";
-import { expiredGetToken } from "../../axios/generalAxiosRequest";
-import { deleteTokenStorage, expiredTimeToken } from "../../token/token";
-import { ModalConfirm } from "../../icons/modalConfirm";
-import { BarNotification } from "../../icons/barNotification";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
+
+import { listAllies, removeAlly } from "../../../api/store";
+import { ApiError } from "../../../api/http";
+import { useTheme } from "../../../theme/ThemeProvider";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Icon,
+  Loader,
+  Sheet,
+  Text,
+  useToast,
+} from "../../../ui";
+
+const ROLE_LABEL = { admin: "Administrador", worker: "Cajero" };
 
 export default function AddUserCompany() {
-    const [users, setUsers] = useState([]);
-    const [nextPage, setNextPage] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [modalConfirmDelete,setModalConfirmDelete] = useState(false);
-    const [selectedUserId, setSelectedUserId] = useState(null);
-    //bar notification hook
-    const [notification,setNotification] = useState(false)
-    const redirectModalQr = () => {
-        router.push("/modals/modalGenerateQrCodeAddUserCompany");
-    };
+  const { colors, spacing } = useTheme();
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const [toDelete, setToDelete] = useState(null);
 
-    useEffect(() => {
-        setUsers([])
-        setNextPage(null)
-        setLoading(false)
-        fetchUsers();
-    }, []);
+  const {
+    data,
+    isLoading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["allies"],
+    queryFn: ({ pageParam }) => listAllies(pageParam),
+    initialPageParam: "base/listUsersCompany/",
+    getNextPageParam: (last) => last?.next ?? undefined,
+  });
 
-    const fetchUsers = async (url = null) => {
-        try {
-            setLoading(true);
-            const token = await expiredGetToken();
-            if (!token) {
-                deleteTokenStorage();
-                return;
-            }
+  const allies = useMemo(
+    () => (data?.pages ?? []).flatMap((p) => p?.results ?? []),
+    [data],
+  );
 
-            const response = await handleListUsersCompany(token, url);
-            const newUsers = response.data.results;
+  const del = useMutation({
+    mutationFn: (id) => removeAlly(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["allies"] });
+      setToDelete(null);
+      toast.success("Aliado eliminado");
+    },
+    onError: (err) => {
+      setToDelete(null);
+      toast.error(
+        err instanceof ApiError ? err.message : "No se pudo eliminar.",
+      );
+    },
+  });
 
-            setUsers(prev => [...prev, ...newUsers]);
-            setNextPage(response.data.next);
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <View style={{ padding: spacing.lg, gap: spacing.sm }}>
+        <Text muted variant="small">
+          Añade colaboradores a tu tienda con el rol que necesites y consulta
+          los que ya están vinculados.
+        </Text>
+        <Button
+          title="Generar código para un aliado"
+          left={
+            <Icon name="qrcode-plus" size={18} color={colors.textOnBrand} />
+          }
+          onPress={() =>
+            router.push("/modals/modalGenerateQrCodeAddUserCompany")
+          }
+        />
+      </View>
 
-        } catch (error) {
-            console.error("Error fetching users:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleDeleteUser= async (id)=>{
-        try{
-            const token = await expiredGetToken();
-            if (!token){
-                deleteTokenStorage();
-                return;
-            }
-            const response = await handleDeleteUserCompany(token,id)
-            setNotificationFunction()
-            // Reset and reload users
-            setUsers([]);
-            setNextPage(null);
-            fetchUsers(); // Refresh list
-
-        }catch(error){
-            console.error("that's my mistake",error)
-        }
-    }
-
-    const setNotificationFunction = () => {
-        setNotification(true);
-        setTimeout(() => {
-          setNotification(false);
-        }, 1500);
-      };
-
-    const renderItem = ({ item }) => (
-        <View style={styles.item}>
-            <View style={{flex:1}}>
-
-            <Text style={{ fontWeight: "bold" }}>{item.name} {item.last_name}</Text>
-            <Text>{item.email}</Text>
-            <Text style={[item.tipo_usuario === 'admin' && {color:'blue'}]}>{item.tipo_usuario === "worker" ? 'Cajero':'Administrador'}</Text>
-            <Text>{item.company}</Text>
+      {isLoading ? (
+        <Loader />
+      ) : (
+        <FlatList
+          data={allies}
+          keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={{
+            paddingHorizontal: spacing.lg,
+            paddingBottom: spacing.xl,
+          }}
+          onEndReached={() => hasNextPage && fetchNextPage()}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={
+            isFetchingNextPage ? <Loader fill={false} /> : null
+          }
+          ListEmptyComponent={
+            <View style={{ paddingVertical: spacing.xxl }}>
+              <EmptyState
+                icon={
+                  isError ? "alert-circle-outline" : "account-group-outline"
+                }
+                title={isError ? "No se pudo cargar" : "Sin aliados"}
+                message={
+                  isError
+                    ? "Revisa tu conexión e inténtalo de nuevo."
+                    : "Genera un código para vincular al primero."
+                }
+              />
             </View>
-            <Pressable onPressOut={()=>{ 
-                setSelectedUserId(item.id);
-                setModalConfirmDelete(true);
-                }} style={{width:'auto',height:'auto'}}>
-                    {iconDelete()}
-            </Pressable>
-        </View>
-    );
-
-    const handleEndReached = () => {
-        if (nextPage && !loading) {
-            fetchUsers(nextPage);
-        }
-    };
-
-    return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: theme.backgroundColorPrincipal.backgroundColor }}>
-            {notification && (
-                    <BarNotification
-                      icon={checkIcon()}
-                      message={"Aliado eliminado con exito !"}
-                    />
-                  )}
-            <View style={{ flex: 1, margin: 10, padding: 10, borderRadius: 20 }}>
-                <View style={{ height: 'auto', paddingVertical: 10 }}>
-                    <Text style={{ ...theme.textTitle }}>Mis usuarios Aliados</Text>
-                    <Text>En esta vista podrás añadir un usuario a tu compañía con el rol que necesites, también podrás ver los usuarios vinculados.</Text>
+          }
+          renderItem={({ item }) => (
+            <Card level={0} style={{ marginBottom: spacing.sm }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: spacing.md,
+                }}
+              >
+                <View style={{ flex: 1, gap: spacing.xxs }}>
+                  <Text weight="medium">
+                    {item.name} {item.last_name}
+                  </Text>
+                  <Text variant="small" muted>
+                    {item.email}
+                  </Text>
+                  <Badge
+                    label={ROLE_LABEL[item.tipo_usuario] || item.tipo_usuario}
+                    tone={item.tipo_usuario === "admin" ? "brand" : "neutral"}
+                  />
                 </View>
-
-                <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', paddingVertical: 10, alignItems: 'center', justifyContent: 'flex-start' }}>
-                        <TextInput
-                            placeholder="Buscar Aliado"
-                            style={styles.textInput}
-                        />
-                        <Pressable onPressOut={() => redirectModalQr()} style={{ marginHorizontal: 10 }}>
-                            {iconAddUser({ size: 24 })}
-                        </Pressable>
-                    </View>
-
-                    <FlatList
-                        data={users}
-                        keyExtractor={(item) => item.id.toString()}
-                        renderItem={renderItem}
-                        onEndReached={handleEndReached}
-                        onEndReachedThreshold={0.9}
-                        ListFooterComponent={
-                            loading ? <ActivityIndicator size="large" color="#0000ff" style={{ marginVertical: 20 }} /> : null
-                        }
-                    />
-                </View>
-            </View>
-            {modalConfirmDelete && (
-                <ModalConfirm
-                  state={modalConfirmDelete}
-                  message={'Deseas eliminar este aliado de tu tienda?'}
-                  handleIPositiveButton={() => {
-                    handleDeleteUser(selectedUserId);
-                    setModalConfirmDelete(false);
-                  }}
-                  onClose={() => setModalConfirmDelete(false)}
+                <Icon
+                  name="trash-can-outline"
+                  size={20}
+                  color={colors.danger}
+                  onPress={() => setToDelete(item)}
                 />
-              )}
-        </SafeAreaView>
-    );
-}
+              </View>
+            </Card>
+          )}
+        />
+      )}
 
-const styles = StyleSheet.create({
-    textInput: {
-        ...theme.textInputGlobal,
-        height: 40,
-        maxWidth: width * 0.8,
-        minWidth: width * 0.6,
-        padding: 5,
-        textTransform: "capitalize",
-    },
-    item: {
-        flexDirection:'row',
-        padding: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: "#ddd",
-    },
-});
+      <Sheet
+        visible={!!toDelete}
+        onClose={() => setToDelete(null)}
+        title="Quitar aliado"
+      >
+        <Text muted>
+          {toDelete?.name} {toDelete?.last_name} dejará de tener acceso a tu
+          tienda.
+        </Text>
+        <Button
+          title="Sí, quitar"
+          variant="danger"
+          loading={del.isPending}
+          onPress={() => del.mutate(toDelete.id)}
+        />
+        <Button
+          title="Cancelar"
+          variant="secondary"
+          onPress={() => setToDelete(null)}
+        />
+      </Sheet>
+    </View>
+  );
+}

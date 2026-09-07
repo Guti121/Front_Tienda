@@ -1,250 +1,205 @@
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { ModalConfirm } from "../icons/modalConfirm";
-import theme, { width } from "../themeStyles/theme";
-import { useCallback, useState } from "react";
+import { useEffect, useState } from "react";
+import { View } from "react-native";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSelector } from "react-redux";
-import { checkIcon, iconDelete, iconEdit, iconError } from "../icons/icons";
-import { handleCostsStore, handleCreateCostsStore, handleDeleteCostsStore } from "./axiosRequest";
-import { useFocusEffect } from "expo-router";
-import { expiredGetToken } from "../axios/generalAxiosRequest";
-import { deleteTokenStorage } from "../token/token";
-import { BarNotification } from "../icons/barNotification";
-import { format } from "prettier";
-import { cleanNumber, formatToCOP, pesosFormat } from "../icons/functionFormat";
 
-export function CostsStore(){
-    const user = useSelector((state) => state.user.user);
-      const [formData, setFormData] = useState({});
-      const [originalData, setOriginalData] = useState({});
-      const [editable, setEditable] = useState(false);
-      const[error,setError] = useState(false)
-      const[color,setColor]=useState(false)
-      const[notification,setNotification]=useState(false)
+import { retrieveCosts, saveCosts, deleteCosts } from "../../api/store";
+import { ApiError } from "../../api/http";
+import { cleanNumber, formatToCOP } from "../icons/functionFormat";
+import { useTheme } from "../../theme/ThemeProvider";
+import {
+  Button,
+  Card,
+  Icon,
+  Loader,
+  Screen,
+  Sheet,
+  Text,
+  TextField,
+  useToast,
+} from "../../ui";
 
-      
-      // Estados individuales por campo
-      const [costosFijos, setCostosFijos] = useState("");
-      const [margenGanancia, setMargenGanancia] = useState("");
-      const [promedioProductosVendidos, setPromedioProductosVendidos] = useState("");
+export function CostsStore() {
+  const { colors, spacing } = useTheme();
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const user = useSelector((state) => state.user.user);
+  const isCreator = user?.typeUser === "creator";
 
-      //Modal confirm
-      const [stateModal,setStateModal]=useState(false)
-      const [stateModalDelete,setStateModalDelete]=useState(false)
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["costs"],
+    queryFn: retrieveCosts,
+    retry: false,
+  });
 
+  // El backend responde 404 cuando aún no hay configuración: en ese caso el
+  // formulario arranca en modo edición para crearla.
+  const notConfigured =
+    isError && error instanceof ApiError && error.status === 404;
 
-    //Handle Request start render
-        const handleRequest = async () => {
-          try {
-            const token = await expiredGetToken();
-            if (!token) {
-              deleteTokenStorage();
-              router.replace("/login");
-              return;
-            }
-            let request = await handleCostsStore(token);
-              // Asignar valores a cada estado
-            setCostosFijos(request.data?.costos_fijos || "");
-            setMargenGanancia(request.data?.margen_ganancia || "");
-            setPromedioProductosVendidos(request.data?.promedio_productos_vendidos || "");
+  const [costos, setCostos] = useState("");
+  const [margen, setMargen] = useState("");
+  const [promedio, setPromedio] = useState("");
+  const [editable, setEditable] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
-           
-            setEditable(false)
-          } catch (error) {
-            if (error?.message ==='No se encontró ninguna configuracion disponible.'){
-              setCostosFijos('')
-              setMargenGanancia('')
-              setPromedioProductosVendidos('')
-              setEditable(true)
-            }
-          }
-        };
-      
-        useFocusEffect(
-          useCallback(() => {
-            handleRequest();
-          }, [])
-        );
-    //-----------------------------------------------------------
-    //Save changes 
-    // Guardar cambios
-    const handleSaveChanges = async () => {
-      if (stateModal) {
-        const token = await expiredGetToken();
-        if (!token) {
-          deleteTokenStorage();
-          return;
-        }
-        try {
-          const formData = {
-            costos_fijos: cleanNumber(costosFijos),
-            margen_ganancia: margenGanancia,
-            promedio_productos_vendidos: promedioProductosVendidos
-          };
-
-          await handleCreateCostsStore(token, formData);
-          setError("Se modificaron los campos");
-          setColor("");
-          errorBar()
-          handleRequest()
-        } catch (error) {
-          setError("Error al guardar los datos");
-          setColor("red");
-          errorBar()
-        }
-      } else {
-        setStateModal(true);
-      }
-    };
-
-
-
-     // Función para manejar cambios en los campos de entrada
-    const handleChangeTextFormat = (value) => {
-      const formattedValue = formatToCOP(value); // Aplicar formato COP
-      setCostosFijos( formattedValue);
-    };
-
-    
-
-    //Modal confir from delete config costs Company 
-    const deleteConfigCostCompany = async ()=>{
-      try{
-          const token = await expiredGetToken();
-          if (!token) {
-            deleteTokenStorage();
-            return;
-            }
-            let request =await handleDeleteCostsStore(token)
-            setError(request.data.message)
-            errorBar()
-            handleRequest()
-          }catch(error){
-              setError(error.message)
-              setColor('red')
-              errorBar()
-            }
-          }
-    
-          
-    const onCloseModalDelete=()=>{
-      setStateModalDelete(false)
+  useEffect(() => {
+    if (data) {
+      setCostos(formatToCOP(String(data.costos_fijos ?? "")));
+      setMargen(String(data.margen_ganancia ?? ""));
+      setPromedio(String(data.promedio_productos_vendidos ?? ""));
+      setEditable(false);
+    } else if (notConfigured) {
+      setEditable(true);
     }
+  }, [data, notConfigured]);
 
+  const save = useMutation({
+    mutationFn: () =>
+      saveCosts({
+        costos_fijos: cleanNumber(costos),
+        margen_ganancia: margen,
+        promedio_productos_vendidos: promedio,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["costs"] });
+      setEditable(false);
+      toast.success("Costos actualizados");
+    },
+    onError: (err) =>
+      toast.error(
+        err instanceof ApiError ? err.message : "No se pudieron guardar.",
+      ),
+  });
 
-    //error bar 
-    const errorBar=()=>{
+  const del = useMutation({
+    mutationFn: deleteCosts,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["costs"] });
+      setConfirmDelete(false);
+      toast.success("Configuración eliminada");
+    },
+    onError: (err) => {
+      setConfirmDelete(false);
+      toast.error(
+        err instanceof ApiError ? err.message : "No se pudo eliminar.",
+      );
+    },
+  });
 
-      setNotification(true);
-      
-      setTimeout(() => {
-        setNotification(false);
-      }, 1500);
-    }
+  if (isLoading) return <Loader label="Cargando…" />;
+  if (isError && !notConfigured) {
+    return (
+      <Screen>
+        <Text color="danger" center>
+          No se pudo cargar la configuración de costos.
+        </Text>
+      </Screen>
+    );
+  }
 
-  return (<SafeAreaView style={{ flex: 1,
-          backgroundColor: theme.backgroundColorPrincipal.backgroundColor }}>
-      <View style={{ flex: 1, margin: 10, padding: 10, borderRadius: 20 }}>
-        {notification && <BarNotification icon={iconError({ size: 20 })} message={error} color={color} />}
-        
-        <ScrollView style={{ flex: 1 }}>
-          <View style={styles.viewContainerInfo}>
-            <Text style={{ color: "white", ...theme.textTitle }}>Opcional</Text>
-            <Text style={{ color: "white", textAlign: "left" }}>
-              Estos datos te ayudarán a tener una perspectiva de un valor sugerido para cada producto:{"\n\n"}
-              Teniendo en cuenta el promedio de productos vendidos en un mes, el porcentaje de ganancia que deseas 
-              para los productos y los costos fijos, el sistema podrá hacer cálculos a la hora de ingresar un producto.
-            </Text>
-            <Text style={{color:'red',fontWeight:'bold'}}>ADVERTENCIA: No asignes valores al azar</Text> 
-          </View>
+  return (
+    <Screen scroll>
+      <View style={{ gap: spacing.lg }}>
+        <Card level={0}>
+          <Text weight="bold">Opcional</Text>
+          <Text muted variant="small" style={{ marginTop: spacing.xs }}>
+            Con el promedio de productos vendidos al mes, el % de ganancia y tus
+            costos fijos, el sistema calcula un precio de venta sugerido.
+          </Text>
+          <Text
+            color="danger"
+            variant="small"
+            weight="bold"
+            style={{ marginTop: spacing.xs }}
+          >
+            No asignes valores al azar.
+          </Text>
+        </Card>
 
-          <View style={{ alignItems: "center" }}>
-            {/* Costos Fijos */}
-            <View style={styles.viewTextInput}>
-              <Text>Costos Fijos</Text>
-              <TextInput
-                editable={editable}
-                style={[styles.textInput, !editable && { backgroundColor: "#ddd", color: "#888" }]}
-                value={editable ? costosFijos : pesosFormat(costosFijos)}
-                keyboardType="numeric"
-                onChangeText={(text)=>handleChangeTextFormat(text)}
+        <Card level={0} style={{ gap: spacing.md }}>
+          <TextField
+            label="Costos fijos"
+            value={costos}
+            onChangeText={(t) => setCostos(formatToCOP(t))}
+            editable={editable}
+            keyboardType="numeric"
+          />
+          <TextField
+            label="Margen de ganancia (%)"
+            value={margen}
+            onChangeText={setMargen}
+            editable={editable}
+            keyboardType="numeric"
+          />
+          <TextField
+            label="Promedio de productos vendidos al mes"
+            value={promedio}
+            onChangeText={setPromedio}
+            editable={editable}
+            keyboardType="numeric"
+          />
+        </Card>
+
+        {isCreator ? (
+          <View style={{ gap: spacing.md }}>
+            {editable ? (
+              <Button
+                title="Guardar"
+                loading={save.isPending}
+                onPress={() => save.mutate()}
               />
-            </View>
-
-            {/* Margen de Ganancia */}
-            <View style={styles.viewTextInput}>
-              <Text>Margen de Ganancia (%)</Text>
-              <TextInput
-                editable={editable}
-                style={[styles.textInput, !editable && { backgroundColor: "#ddd", color: "#888" }]}
-                value={margenGanancia}
-                keyboardType="numeric"
-                onChangeText={setMargenGanancia}
+            ) : (
+              <Button
+                title="Editar"
+                variant="secondary"
+                left={
+                  <Icon name="pencil-outline" size={18} color={colors.text} />
+                }
+                onPress={() => setEditable(true)}
               />
-            </View>
-
-            {/* Promedio Productos Vendidos */}
-            <View style={styles.viewTextInput}>
-              <Text>Promedio de productos mensuales vendidos</Text>
-              <TextInput
-                editable={editable}
-                style={[styles.textInput, !editable && { backgroundColor: "#ddd", color: "#888" }]}
-                value={String(promedioProductosVendidos)}
-                keyboardType="numeric"
-                onChangeText={setPromedioProductosVendidos}
-              />
-            </View>
-            
-
-            {/* Botones de acción */}
-            {user.typeUser === "creator" && (
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginVertical: 10 }}>
-                <Pressable onPress={handleSaveChanges} style={{ marginHorizontal: 20 }}>
-                  {editable && checkIcon()}
-                </Pressable>
-                {!editable && <Pressable onPress={() => setStateModalDelete(true)} style={{ marginHorizontal: 20 }}>
-                  {iconDelete("red")}
-                </Pressable>}
-              </View>
             )}
+            {data && !editable ? (
+              <Button
+                title="Eliminar configuración"
+                variant="danger"
+                left={
+                  <Icon
+                    name="trash-can-outline"
+                    size={18}
+                    color={colors.textOnBrand}
+                  />
+                }
+                onPress={() => setConfirmDelete(true)}
+              />
+            ) : null}
           </View>
-        </ScrollView>
+        ) : null}
       </View>
 
-      <ModalConfirm
-        state={stateModal}
-        message={"¿Quieres modificar los datos de costos fijos?"}
-        handleIPositiveButton={handleSaveChanges}
-        onClose={() => setStateModal(false)}
-      />
-
-      
-      <ModalConfirm state={stateModalDelete}
-          message={
-            "¿Estas seguro de eliminar estos datos? " 
-          }
-          
-            handleIPositiveButton={()=>deleteConfigCostCompany()}
-            onClose={()=>{onCloseModalDelete()}}/>
-    </SafeAreaView>
+      <Sheet
+        visible={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        title="Eliminar configuración"
+      >
+        <Text muted>
+          Se borrará la configuración de costos fijos. El precio sugerido dejará
+          de calcularse hasta que la vuelvas a crear.
+        </Text>
+        <Button
+          title="Sí, eliminar"
+          variant="danger"
+          loading={del.isPending}
+          onPress={() => del.mutate()}
+        />
+        <Button
+          title="Cancelar"
+          variant="secondary"
+          onPress={() => setConfirmDelete(false)}
+        />
+      </Sheet>
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  viewTextInput: { margin: 5 },
-   textInput: {
-          ...theme.textInputGlobal,
-          height: 40,
-          width: width * 0.9,
-          paddingHorizontal: 10,
-          backgroundColor: "#fff",
-          borderRadius: 8,
-      },
-  viewContainerInfo: { 
-    alignItems: "center", 
-    height: "auto", 
-    margin: 5,
-    ...theme.pressableColor,
-    padding: 10,
-    borderRadius: 20,
-  },
-});
+export default CostsStore;

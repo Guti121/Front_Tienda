@@ -1,75 +1,52 @@
-import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
-import theme from "../../src/components/themeStyles/theme";
-import {
-  iconInfo,
-  iconPersonPlus,
-  iconSettingsBlack,
-  iconSignalMoney,
-} from "../../src/components/icons/icons";
+import { View } from "react-native";
 import { router } from "expo-router";
+
 import { useUserCAAuthRedirect } from "../../src/redux/viewsPermissions";
+import { useTheme } from "../../src/theme/ThemeProvider";
+import { Card, Divider, ListItem, Screen } from "../../src/ui";
+
+const OPTIONS = [
+  {
+    icon: "account-multiple-plus-outline",
+    title: "Colaboradores",
+    subtitle: "Ver y agregar aliados a tu tienda",
+    route: "/myStoreSettings/addUserCompanyDrawer",
+  },
+  {
+    icon: "storefront-outline",
+    title: "Detalles de mi tienda",
+    subtitle: "Datos, contacto y logo",
+    route: "/myStoreSettings/detailsMyStoreDrawer",
+  },
+  {
+    icon: "cash-multiple",
+    title: "Mis costos fijos",
+    subtitle: "Base para el precio sugerido",
+    route: "/myStoreSettings/costsMyStoreDrawer",
+  },
+];
 
 export default function SettingsStoreDrawer() {
-  useUserCAAuthRedirect()
-  const redirectDetailsMyStore=()=>{
-    router.push('/myStoreSettings/detailsMyStoreDrawer')
-  }
+  useUserCAAuthRedirect();
+  const { spacing } = useTheme();
 
-  const redirectCostsMyStore=()=>{
-    router.push('/myStoreSettings/costsMyStoreDrawer')
-  }
-
-  const redirectAddUserCompany=()=>{
-    router.push('/myStoreSettings/addUserCompanyDrawer')
-  }
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <View style={{ flex: 1 }}>
-        <View
-          style={{
-            padding: 10,
-            width: "100%",
-            height: 55,
-            alignItems: "center",
-            flexDirection: "row",
-          }}
-        >
-          {iconSettingsBlack({ size: 30 })}
-          <Text style={{ paddingHorizontal: 10, ...theme.textTitle }}>
-            Configuración
-          </Text>
-        </View>
-        <Pressable onPressOut={()=>redirectAddUserCompany()}style={styles.pressableStyles}>
-          {iconPersonPlus({ size: 30, color: "gray" })}
-          <Text style={styles.textStyles}>Ver/Agregar colaborador</Text>
-        </Pressable>
-        <Pressable style={styles.pressableStyles}
-          onPressOut={()=>redirectDetailsMyStore()}>
-          {iconInfo({ size: 30, color: "gray" })}
-          <Text style={styles.textStyles}>Detalles de mi tienda</Text>
-        </Pressable>
-        <Pressable style={styles.pressableStyles}
-            onPressOut={()=>redirectCostsMyStore()}>
-          {iconSignalMoney({ size: 30, color: "gray" })}
-          <Text style={styles.textStyles}>Mis costos fijos</Text>
-        </Pressable>
+    <Screen>
+      <View style={{ gap: spacing.lg }}>
+        <Card level={0} padded={false}>
+          {OPTIONS.map((o, i) => (
+            <View key={o.route}>
+              {i > 0 ? <Divider /> : null}
+              <ListItem
+                icon={o.icon}
+                title={o.title}
+                subtitle={o.subtitle}
+                onPress={() => router.push(o.route)}
+              />
+            </View>
+          ))}
+        </Card>
       </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  //Se realizan los estilos de los contenedores Pressable Para las opciones
-  pressableStyles: {
-    margin: 5,
-    padding: 5,
-    borderRadius: 15,
-    backgroundColor: "white",
-    alignItems: "center",
-    width: "auto",
-    height: 55,
-    ...theme.shadow,
-    flexDirection: "row",
-  },
-  textStyles: { ...theme.textTitle, fontSize: 15, paddingHorizontal: 10 },
-});

@@ -1,59 +1,58 @@
-import { View, Text, StyleSheet, Pressable } from "react-native";
-import { iconLogout } from "../src/components/icons/icons";
-import theme from "../src/components/themeStyles/theme";
+import { View } from "react-native";
+import { useDispatch, useSelector } from "react-redux";
+
 import { handleLogout } from "../src/components/sesion/axiosRequest";
-import { useDispatch } from "react-redux";
 import { logout } from "../src/redux/userSlice";
-import { deleteTokenStorage } from "../src/components/token/token";
-import { showSessionAlert } from "../src/components/themeStyles/alerts";
-import { router } from "expo-router";
+import { useTheme } from "../src/theme/ThemeProvider";
+import { Badge, Button, Card, Icon, Screen, Text, useToast } from "../src/ui";
+
+const ROLE_LABEL = {
+  creator: "Propietario",
+  admin: "Administrador",
+  worker: "Colaborador",
+  cliente: "Cliente",
+};
 
 export default function Profile() {
   const dispatch = useDispatch();
-  const logoutSesion = async () => {
+  const toast = useToast();
+  const { colors, spacing } = useTheme();
+  const user = useSelector((state) => state.user.user);
+  const role = user?.typeUser;
+
+  const cerrarSesion = async () => {
     try {
-      const response = await handleLogout();
+      await handleLogout(); // limpia sesión y redirige a /login
       dispatch(logout());
-      deleteTokenStorage()
-    } catch (error) {
-      showSessionAlert(
-              "Error",
-              "Tu sesión no se pudo cerrar.",
-              () => router.replace("/drawer")
-            );
+    } catch {
+      toast.error("Tu sesión no se pudo cerrar.");
     }
   };
+
   return (
-    <View>
-      <Pressable
-        style={styles.logoutButton}
-        onPress={() => {
-          logoutSesion();
-        }}
-      >
-        {iconLogout({ size: 20, color: "red" })}
-        <Text style={styles.logoutText}>Cerrar Sesión</Text>
-      </Pressable>
-    </View>
+    <Screen scroll>
+      <View style={{ gap: spacing.lg }}>
+        <Card level={1}>
+          <Text variant="subtitle" weight="bold">
+            {user?.username || "Usuario"}
+          </Text>
+          {user?.email ? (
+            <Text variant="small" muted>
+              {user.email}
+            </Text>
+          ) : null}
+          <View style={{ marginTop: spacing.sm }}>
+            <Badge label={ROLE_LABEL[role] || "Sin rol"} tone="brand" />
+          </View>
+        </Card>
+
+        <Button
+          title="Cerrar sesión"
+          variant="danger"
+          left={<Icon name="logout" size={18} color={colors.textOnBrand} />}
+          onPress={cerrarSesion}
+        />
+      </View>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  logoutButton: {
-    alignItems: "center",
-    flexDirection: "row",
-    marginTop: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    backgroundColor: "#D9534F",
-    borderRadius: 10,
-    alignSelf: "center",
-    ...theme.pressableColorCancel,
-  },
-  logoutText: {
-    marginHorizontal: 5,
-    color: "red",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-});
