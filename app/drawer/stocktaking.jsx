@@ -1,4 +1,7 @@
 import StocktakingPage from "../../src/components/stocktaking/stocktaking";
+import { useUserCAuthRedirect } from "../../src/redux/viewsPermissions";
 
 export default function Stocktaking() {
-    return <StocktakingPage/>} 
+  useUserCAuthRedirect(); // solo creator
+  return <StocktakingPage />;
+}

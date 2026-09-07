@@ -1,125 +1,93 @@
-import { SafeAreaView, Text, View, ScrollView } from "react-native";
-import AnimatedButton from "../catalog/stylesCatalogo/buttonAnimate";
-import theme from "../themeStyles/theme";
+import { View } from "react-native";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
-import { handleRequestStookProducts } from "./axiosRequest";
-import { expiredGetToken } from "../axios/generalAxiosRequest";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import { useQuery } from "@tanstack/react-query";
+
+import { getStockTotals } from "../../api/inventory";
+import { useTheme } from "../../theme/ThemeProvider";
+import { Button, Card, Divider, Icon, Loader, Screen, Text } from "../../ui";
 import { pesosFormat } from "../icons/functionFormat";
-import { deleteTokenStorage } from "../token/token";
-import { showSessionAlert } from "../themeStyles/alerts";
 
-export default function StocktakingPage() {
-  const [data, setData] = useState(null);
-
-  const handleRequest = async () => {
-    try {
-      const token = await expiredGetToken();
-      if (!token) {
-        deleteTokenStorage();
-        router.replace("/login");
-        return;
-      }
-
-      const request = await handleRequestStookProducts(token);
-      setData(request.data);
-    } catch (error) {
-      showSessionAlert('Error','Error al obtener datos de stock')
-    }
-  };
-
-  useEffect(() => {
-    handleRequest();
-  }, []);
-
+function Row({ label, value }) {
   return (
-    <SafeAreaView style={{ flex: 1, ...theme.backgroundColorPrincipal }}>
-      <ScrollView contentContainerStyle={{ padding: 20 }}>
-        {/* Intro Card */}
-        <View style={styles.card}>
-          <Text style={styles.title}>Inventario</Text>
-          <Text style={styles.description}>
-            Esta sección te permite revisar el inventario de los productos en tu
-            tienda y el inventario de facturación diaria o mensual.
-          </Text>
-          <View style={styles.optionContainer}>
-            <Text style={styles.optionText}>
-              Selecciona una opción para continuar:
-            </Text>
-          </View>
-        </View>
-
-        {/* Button */}
-        <AnimatedButton
-          style={{ ...theme.button, marginTop: 20 }}
-          title="Ver inventario de facturación"
-          textStyle={theme.textButton}
-          onPress={() => router.push("/stockTaking/dailyStockTakingDrawer")}
-        />
-
-        {/* Stock Data Card */}
-        <View style={[styles.card, { marginTop: 20 }]}>
-          <Text style={styles.subtitle}>Stock Activo:</Text>
-
-          <Animated.View entering={FadeInDown.duration(800).delay(150)}>
-            <Text style={styles.dataLine}>
-              Total CF: {pesosFormat(data?.total_costos_fijos)}
-            </Text>
-            <Text style={styles.dataLine}>
-              Total precio por mayor: {pesosFormat(data?.total_precio_mayor)}
-            </Text>
-            <Text style={styles.dataLine}>
-              Total precio de venta: {pesosFormat(data?.total_precio_venta)}
-            </Text>
-            <Text style={styles.dataLine}>
-              Total de unidades: {data?.total_unidades_disponibles}
-            </Text>
-          </Animated.View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+    <View
+      style={{
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingVertical: 6,
+      }}
+    >
+      <Text muted>{label}</Text>
+      <Text weight="bold">{value}</Text>
+    </View>
   );
 }
 
-const styles = {
-  card: {
-    backgroundColor: theme.colors.backgroundColorWarning,
-    padding: 20,
-    borderRadius: 12,
-    borderColor: theme.colors.primary,
-    borderWidth: 1,
-    ...theme.shadow,
-  },
-  title: {
-    color: theme.colors.textPrimary,
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  subtitle: {
-    color: theme.colors.textPrimary,
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  description: {
-    color: theme.colors.textSecundary,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  optionContainer: {
-    marginTop: 20,
-    alignItems: "center",
-  },
-  optionText: {
-    color: theme.colors.textPrimary,
-    fontSize: 16,
-    textAlign: "center",
-  },
-  dataLine: {
-    color: theme.colors.textPrimary,
-    fontSize: 15,
-    marginBottom: 8,
-  },
-};
+export default function StocktakingPage() {
+  const { colors, spacing } = useTheme();
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["inventory", "stockTotals"],
+    queryFn: getStockTotals,
+  });
+
+  return (
+    <Screen scroll>
+      <View style={{ gap: spacing.lg }}>
+        <Card level={1}>
+          <Text variant="title" weight="bold">
+            Inventario
+          </Text>
+          <Text muted style={{ marginTop: spacing.xs }}>
+            Revisa el valor del stock activo y el inventario de facturación
+            diaria o mensual.
+          </Text>
+        </Card>
+
+        <Card level={1}>
+          <Text weight="bold" style={{ marginBottom: spacing.sm }}>
+            Stock activo
+          </Text>
+          {isLoading ? (
+            <Loader fill={false} />
+          ) : isError ? (
+            <Text color="danger" variant="small">
+              No se pudo cargar el valor del stock.
+            </Text>
+          ) : (
+            <>
+              <Row
+                label="Total unidades"
+                value={String(data?.total_unidades_disponibles ?? 0)}
+              />
+              <Divider />
+              <Row
+                label="Valor por mayor"
+                value={pesosFormat(data?.total_precio_mayor)}
+              />
+              <Row
+                label="Valor de venta"
+                value={pesosFormat(data?.total_precio_venta)}
+              />
+              <Row
+                label="Costos fijos"
+                value={pesosFormat(data?.total_costos_fijos)}
+              />
+            </>
+          )}
+        </Card>
+
+        <Button
+          title="Ver inventario de facturación"
+          left={
+            <Icon
+              name="file-chart-outline"
+              size={18}
+              color={colors.textOnBrand}
+            />
+          }
+          onPress={() => router.push("/stockTaking/dailyStockTakingDrawer")}
+        />
+      </View>
+    </Screen>
+  );
+}

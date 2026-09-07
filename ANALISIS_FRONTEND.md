@@ -405,8 +405,24 @@ Verificado: `expo export --platform web` OK + eslint limpio.
       anónimo + imports muertos.
 - Con esto la **pestaña Productos queda 100% migrada** (productos + tipos).
 
+**Incremento 7 (2026-09-06)** — Inventario. Verificado: `expo export --platform
+web` OK + eslint limpio.
+- [x] **`src/api/inventory.js`** (nuevo): `getStockTotals()` (POST
+      `inventario/productos/`), `getDailyReport({month,year,page})`,
+      `getMonthlySummary({month,year})`. Reemplaza `stocktaking/axiosRequest.jsx`
+      (queda huérfano).
+- [x] **`src/components/stocktaking/stocktaking.jsx`** reescrito (125→~95) sobre
+      `src/ui/` + `useQuery`. `Card` de "stock activo" (unidades, valor mayor,
+      venta, CF). Sin reanimated.
+- [x] **`src/components/stocktaking/dailyStockTaking.jsx`** reescrito (200→~195)
+      sobre `src/ui/` + `useInfiniteQuery` (lista diaria) + `useQuery` (resumen
+      del mes con ganancias netas calculadas). Selector de periodo con el
+      `MonthPickerModal` existente. Quita el `router` no importado.
+- [x] `app/drawer/stocktaking.jsx` + `app/stockTaking/dailyStockTakingDrawer.jsx`:
+      añadido `useUserCAuthRedirect` (solo creator, como el backend).
+
 **Pendiente del incremento:**
-- [ ] Resto de pantallas sobre `src/ui/` + React Query: inventario, catálogo
+- [ ] Resto de pantallas sobre `src/ui/` + React Query: catálogo
       público, ajustes de tienda, perfil, QR aliado, **escáner de código de
       barras** (`modalBarCode`, quitar `react-webcam` →
       `expo-camera`/`expo-image-picker`).
