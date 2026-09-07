@@ -2,6 +2,7 @@ export { Text } from "./Text";
 export { Button } from "./Button";
 export { TextField } from "./TextField";
 export { Card } from "./Card";
+export { Chip } from "./Chip";
 export { Screen } from "./Screen";
 export { Badge } from "./Badge";
 export { Loader } from "./Loader";

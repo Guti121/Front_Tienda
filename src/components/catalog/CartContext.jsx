@@ -17,6 +17,7 @@ const CartContext = createContext({
   cartItems: [],
   addToCart: noop,
   removeFromCart: noop,
+  setQty: noop,
   clearCart: noop,
 });
 
@@ -65,11 +66,21 @@ export const CartProvider = ({ children }) => {
     [],
   );
 
+  const setQty = useCallback((productId, qty) => {
+    setCartItems((prev) =>
+      qty <= 0
+        ? prev.filter((it) => it.id !== productId)
+        : prev.map((it) =>
+            it.id === productId ? { ...it, cantidad: qty } : it,
+          ),
+    );
+  }, []);
+
   const clearCart = useCallback(() => setCartItems([]), []);
 
   return (
     <CartContext.Provider
-      value={{ cartItems, addToCart, removeFromCart, clearCart }}
+      value={{ cartItems, addToCart, removeFromCart, setQty, clearCart }}
     >
       {children}
     </CartContext.Provider>

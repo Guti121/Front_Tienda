@@ -7,71 +7,99 @@ import { mediaUrl } from "../../src/api/config";
 import { pesosFormat } from "../../src/components/icons/functionFormat";
 import { isWeb } from "../../src/components/token/localstorage";
 import { useTheme } from "../../src/theme/ThemeProvider";
-import {
-  Button,
-  Card,
-  EmptyState,
-  Icon,
-  Screen,
-  Text,
-  useToast,
-} from "../../src/ui";
+import { Button, EmptyState, Icon, Stepper, Text } from "../../src/ui";
 
+const MAX_W = 720;
 const FALLBACK_IMG =
   "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
 
 export default function CartScreen() {
-  const { cartItems, removeFromCart, clearCart } = useCart();
-  const { colors, spacing } = useTheme();
-  const toast = useToast();
+  const { cartItems, removeFromCart, setQty, clearCart } = useCart();
+  const { colors, spacing, radii, shadow } = useTheme();
   const empresa = useSelector((state) => state.user.empresa);
 
   const subtotal = (it) => Number(it.valor) * it.cantidad;
   const total = cartItems.reduce((sum, it) => sum + subtotal(it), 0);
+  const count = cartItems.reduce((n, it) => n + it.cantidad, 0);
 
   const enviarPedido = () => {
     if (cartItems.length === 0) return;
     let msg = "Hola, quisiera realizar el siguiente pedido:\n\n";
     cartItems.forEach((it) => {
-      msg += `• ${it.numero_producto} ${it.nombre} x${it.cantidad} = ${pesosFormat(
-        subtotal(it),
-      )}\n`;
+      msg += `• ${it.nombre} x${it.cantidad} — ${pesosFormat(subtotal(it))}\n`;
     });
     msg += `\nTotal: ${pesosFormat(total)}`;
     const url = `https://wa.me/57${empresa?.phone || ""}?text=${encodeURIComponent(msg)}`;
     if (isWeb) window.open(url);
-    else
-      Linking.openURL(url).catch(() =>
-        toast.error("No se pudo abrir WhatsApp"),
-      );
+    else Linking.openURL(url).catch(() => {});
   };
 
   return (
-    <Screen padded={false}>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: spacing.sm,
+          height: 52,
+          paddingHorizontal: spacing.sm,
+          backgroundColor: colors.surface,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+        }}
+      >
+        <Pressable
+          onPress={() => router.back()}
+          hitSlop={8}
+          style={{ padding: spacing.sm }}
+        >
+          <Icon name="chevron-left" size={24} color={colors.text} />
+        </Pressable>
+        <Text weight="bold">Tu carrito{count ? ` · ${count}` : ""}</Text>
+      </View>
+
       <FlatList
         data={cartItems}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={{ padding: spacing.lg }}
-        ListHeaderComponent={
-          <Text
-            variant="title"
-            weight="bold"
-            style={{ marginBottom: spacing.md }}
-          >
-            Tu carrito
-          </Text>
-        }
+        contentContainerStyle={{
+          width: "100%",
+          maxWidth: MAX_W,
+          alignSelf: "center",
+          padding: spacing.lg,
+          paddingBottom: 140,
+        }}
         ListEmptyComponent={
-          <EmptyState
-            icon="cart-outline"
-            title="Tu carrito está vacío"
-            message="Agrega productos desde el catálogo."
-          />
+          <View style={{ paddingVertical: spacing.xxl, gap: spacing.md }}>
+            <EmptyState
+              icon="cart-outline"
+              title="Tu carrito está vacío"
+              message="Explora el catálogo y añade productos."
+            />
+            <View style={{ alignItems: "center" }}>
+              <Button
+                title="Ver catálogo"
+                variant="secondary"
+                fullWidth={false}
+                onPress={() => router.back()}
+              />
+            </View>
+          </View>
         }
+        ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
         renderItem={({ item }) => {
           const uri = mediaUrl(item?.imagenes?.[0]?.imagen) || FALLBACK_IMG;
           return (
-            <Card level={0} style={{ marginBottom: spacing.sm }}>
+            <View
+              style={{
+                flexDirection: "row",
+                gap: spacing.md,
+                backgroundColor: colors.surface,
+                borderRadius: radii.lg,
+                borderWidth: 1,
+                borderColor: colors.border,
+                padding: spacing.md,
+              }}
+            >
               <Pressable
                 onPress={() =>
                   router.push({
@@ -79,67 +107,114 @@ export default function CartScreen() {
                     params: { id: item.id, name: empresa?.name },
                   })
                 }
-                style={{ flexDirection: "row", gap: spacing.md }}
               >
                 <Image
                   source={{ uri }}
-                  style={{ width: 64, height: 64, borderRadius: 10 }}
+                  style={{
+                    width: 72,
+                    height: 72,
+                    borderRadius: radii.md,
+                    backgroundColor: colors.surfaceAlt,
+                  }}
                 />
-                <View style={{ flex: 1, gap: spacing.xxs }}>
-                  <Text weight="medium" numberOfLines={1}>
-                    {item.nombre} x{item.cantidad}
+              </Pressable>
+
+              <View style={{ flex: 1, gap: spacing.xs }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    gap: spacing.sm,
+                  }}
+                >
+                  <Text weight="medium" numberOfLines={2} style={{ flex: 1 }}>
+                    {item.nombre}
                   </Text>
+                  <Icon
+                    name="close"
+                    size={18}
+                    color={colors.textFaint}
+                    onPress={() => removeFromCart(item.id)}
+                  />
+                </View>
+                <Text variant="small" muted>
+                  {pesosFormat(item.valor)} c/u
+                </Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginTop: spacing.xxs,
+                  }}
+                >
+                  <Stepper
+                    value={item.cantidad}
+                    onChange={(q) => setQty(item.id, q)}
+                    size="sm"
+                  />
                   <Text weight="bold" color="primary">
                     {pesosFormat(subtotal(item))}
                   </Text>
                 </View>
-                <Icon
-                  name="trash-can-outline"
-                  size={20}
-                  color={colors.danger}
-                  onPress={() => removeFromCart(item.id)}
-                />
-              </Pressable>
-            </Card>
+              </View>
+            </View>
           );
         }}
       />
 
       {cartItems.length > 0 ? (
-        <Card
-          level={2}
+        <View
           style={{
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
-            gap: spacing.md,
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: colors.surface,
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
+            ...shadow(3),
           }}
         >
           <View
-            style={{ flexDirection: "row", justifyContent: "space-between" }}
+            style={{
+              width: "100%",
+              maxWidth: MAX_W,
+              alignSelf: "center",
+              padding: spacing.lg,
+              gap: spacing.md,
+            }}
           >
-            <Text weight="bold">Total</Text>
-            <Text variant="title" weight="bold" color="primary">
-              {pesosFormat(total)}
-            </Text>
-          </View>
-          <View style={{ flexDirection: "row", gap: spacing.md }}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "baseline",
+              }}
+            >
+              <Text muted>Total ({count})</Text>
+              <Text variant="title" weight="bold" color="primary">
+                {pesosFormat(total)}
+              </Text>
+            </View>
             <Button
-              title="Vaciar"
-              variant="ghost"
-              style={{ flex: 1 }}
-              onPress={clearCart}
-            />
-            <Button
-              title="Enviar pedido"
-              style={{ flex: 2 }}
+              title="Pedir por WhatsApp"
               left={
                 <Icon name="whatsapp" size={18} color={colors.textOnBrand} />
               }
               onPress={enviarPedido}
             />
+            <Pressable
+              onPress={clearCart}
+              style={{ alignItems: "center", paddingVertical: spacing.xs }}
+            >
+              <Text variant="small" color="danger">
+                Vaciar carrito
+              </Text>
+            </Pressable>
           </View>
-        </Card>
+        </View>
       ) : null}
-    </Screen>
+    </View>
   );
 }
