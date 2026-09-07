@@ -1,5 +1,5 @@
 // API de productos sobre el cliente único (src/api/http.js). Sin `token` por
-// parámetro. Reemplaza gradualmente a src/components/colletion/axiosRequest.jsx.
+// parámetro (lo pone el interceptor).
 import { api, ApiError } from "./http";
 
 const qs = (obj) => {

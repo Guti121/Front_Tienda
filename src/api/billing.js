@@ -1,5 +1,5 @@
 // API de facturación sobre el cliente único (src/api/http.js). Sin `token` por
-// parámetro. Reemplaza a src/components/billing/axiosRequest.jsx.
+// parámetro (lo pone el interceptor).
 import { api, postForm } from "./http";
 
 // POST /facturas/create/  → { mensaje, factura_id, Factura }

@@ -9,7 +9,7 @@ import {
   Alert,
 } from "react-native";
 
-import { iconDelete, iconImage } from "../icons/icons";
+import { Icon } from "../../ui";
 
 export default function ImagePickerWeb({ images, setImages }) {
   const inputRef = useRef(null);
@@ -35,7 +35,7 @@ export default function ImagePickerWeb({ images, setImages }) {
     if (images.length + files.length > MAX_IMAGES) {
       showMessage(
         "Límite alcanzado",
-        `Solo puedes subir un máximo de ${MAX_IMAGES} imágenes.`
+        `Solo puedes subir un máximo de ${MAX_IMAGES} imágenes.`,
       );
 
       if (inputRef.current) {
@@ -49,17 +49,11 @@ export default function ImagePickerWeb({ images, setImages }) {
     const rejectedFiles = [];
 
     files.forEach((file) => {
-      console.log("FILE NAME:", file.name);
-      console.log("FILE TYPE:", file.type);
-      console.log("FILE SIZE:", file.size);
-
       const sizeInMB = file.size / (1024 * 1024);
 
       // Validate file size only
       if (sizeInMB > MAX_SIZE_MB) {
-        rejectedFiles.push(
-          `${file.name || "archivo"} supera ${MAX_SIZE_MB}MB`
-        );
+        rejectedFiles.push(`${file.name || "archivo"} supera ${MAX_SIZE_MB}MB`);
         return;
       }
 
@@ -73,7 +67,7 @@ export default function ImagePickerWeb({ images, setImages }) {
     if (rejectedFiles.length > 0) {
       showMessage(
         "Algunos archivos fueron rechazados",
-        rejectedFiles.join("\n")
+        rejectedFiles.join("\n"),
       );
     }
 
@@ -107,21 +101,17 @@ export default function ImagePickerWeb({ images, setImages }) {
         onPress={() => inputRef.current?.click()}
         onHoverIn={() => setIsHovered(true)}
         onHoverOut={() => setIsHovered(false)}
-        style={[
-          styles.uploadBox,
-          isHovered && styles.uploadBoxHovered,
-        ]}
+        style={[styles.uploadBox, isHovered && styles.uploadBoxHovered]}
       >
         <View style={styles.iconContainer}>
-          {iconImage({
-            size: 32,
-            color: isHovered ? "#5e5ce6" : "#8e8e93",
-          })}
+          <Icon
+            name="image-plus"
+            size={32}
+            color={isHovered ? "#5e5ce6" : "#8e8e93"}
+          />
         </View>
 
-        <Text style={styles.uploadTitle}>
-          Haz clic para subir imágenes
-        </Text>
+        <Text style={styles.uploadTitle}>Haz clic para subir imágenes</Text>
 
         <Text style={styles.uploadSubtitle}>
           Puedes tomar foto o elegir desde galería
@@ -149,16 +139,13 @@ export default function ImagePickerWeb({ images, setImages }) {
         <View style={styles.previewContainer}>
           {images.map((img, idx) => (
             <View key={idx} style={styles.imageWrapper}>
-              <Image
-                source={{ uri: img.uri }}
-                style={styles.previewImage}
-              />
+              <Image source={{ uri: img.uri }} style={styles.previewImage} />
 
               <Pressable
                 onPress={() => removeImage(idx)}
                 style={styles.deleteButton}
               >
-                {iconDelete("#fff", 14)}
+                <Icon name="close" size={14} color="#fff" />
               </Pressable>
             </View>
           ))}

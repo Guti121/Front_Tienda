@@ -1,58 +1,45 @@
-import { View, Text, Pressable, ScrollView, StyleSheet } from "react-native";
-import theme from "../../src/components/themeStyles/theme";
-import { useEffect, useState } from "react";
+import { View } from "react-native";
 import { router } from "expo-router";
 
-export default function ModalIconFilter() {
-  const [selectedIndex, setSelectedIndex] = useState(null); // Estado para almacenar el índice seleccionado
+import { useTheme } from "../../src/theme/ThemeProvider";
+import { Card, Divider, ListItem, Screen, Text } from "../../src/ui";
 
-  const handlePress = (index) => {
-    setSelectedIndex(index);
-    // Actualizar el índice seleccionado
-    const returnedValue = "Valor a regresar";
+// El índice (0–5) se envía como `returnedValue` y el backend lo interpreta como
+// el parámetro `order` del listado de productos.
+const OPCIONES = [
+  "Agotados primero",
+  "Más unidades disponibles",
+  "Menos unidades disponibles",
+  "Más recientes",
+  "Más antiguos",
+  "Orden alfabético (A–Z)",
+];
 
+export default function ModalFilterProductIcon() {
+  const { spacing } = useTheme();
+
+  const aplicar = (index) => {
     router.replace({
       pathname: "/drawer/productsDrawer",
       params: { returnedValue: index },
-    }); // Devuelve un valor al componente anterio
+    });
   };
 
   return (
-    <ScrollView style={{ flex: 1, borderWidth: 1 }}>
-      {[
-        "Agotado",
-        "Unidades disponibles (Mayor a Menor)",
-        "Unidades disponibles (Menor a Mayor)",
-        "Creación de Productos (Recientes a Antiguos)",
-        "Creación de Productos (Antiguos a Recientes)",
-        "A-Z orden",
-      ].map((item, index) => (
-        <Pressable
-          key={index}
-          onPress={() => {
-            handlePress(index);
-          }} // Manejar el evento de clic
-          style={[
-            styles.pressableStyle,
-            selectedIndex === index && styles.selectedStyle, // Aplicar estilo si está seleccionado
-          ]}
-        >
-          <Text>{item}</Text>
-        </Pressable>
-      ))}
-    </ScrollView>
+    <Screen>
+      <View style={{ gap: spacing.md }}>
+        <Text muted variant="small">
+          Ordena el listado de productos:
+        </Text>
+        <Card level={0} padded={false}>
+          {OPCIONES.map((label, i) => (
+            <View key={label}>
+              {i > 0 ? <Divider /> : null}
+              <ListItem title={label} onPress={() => aplicar(i)} />
+            </View>
+          ))}
+        </Card>
+      </View>
+    </Screen>
   );
 }
-const styles = StyleSheet.create({
-  pressableStyle: {
-    ...theme.borderColorInput,
-    height: 50,
-    borderBottomWidth: 2,
-    alignItems: "flex-start",
-    justifyContent: "center",
-    padding: 10,
-  },
-  selectedStyle: {
-    backgroundColor: "#d0d0d0",
-  },
-});

@@ -1,4 +1,4 @@
-// Inventario (solo creator). Reemplaza src/components/stocktaking/axiosRequest.jsx.
+// Inventario (solo creator).
 import { api } from "./http";
 
 const qs = (obj) => {

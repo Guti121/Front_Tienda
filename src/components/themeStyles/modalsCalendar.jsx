@@ -1,174 +1,135 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableWithoutFeedback,
-  TouchableOpacity,
-  FlatList,
-  Picker,
-} from "react-native";
+import { useState } from "react";
+import { Modal, Pressable, View } from "react-native";
 import { Calendar } from "react-native-calendars";
-import theme from "./theme";
 
+import { useTheme } from "../../theme/ThemeProvider";
+import { Text } from "../../ui";
 
+const MESES = [
+  "Ene",
+  "Feb",
+  "Mar",
+  "Abr",
+  "May",
+  "Jun",
+  "Jul",
+  "Ago",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dic",
+];
+
+// Selector de día. `onClose` recibe la fecha "YYYY-MM-DD" (o la de hoy al tocar
+// fuera del calendario).
 export const ModalCalendar = ({ state, onClose }) => {
-  const [selectedDate, setSelectedDate] = useState("");
-  const handleDayPress = (day) => {
-    onClose(day.dateString);
-    setSelectedDate(day.dateString);
-  };
+  const { colors } = useTheme();
+  const [selected, setSelected] = useState("");
 
   return (
-    <Modal
-      visible={state}
-      animationType="fade"
-      transparent={true}
-      style={{ flex: 1 }}
-    >
-      <TouchableWithoutFeedback
+    <Modal visible={state} animationType="fade" transparent>
+      <Pressable
         onPress={() => onClose(new Date().toISOString().split("T")[0])}
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          padding: 20,
+          backgroundColor: colors.overlay,
+        }}
       >
-        <View style={styles.container}>
+        <Pressable onPress={(e) => e.stopPropagation()}>
           <Calendar
-            onDayPress={handleDayPress}
+            onDayPress={(day) => {
+              setSelected(day.dateString);
+              onClose(day.dateString);
+            }}
             markedDates={{
-              [selectedDate]: { selected: true, selectedColor: theme.colors.primary },
+              [selected]: { selected: true, selectedColor: colors.primary },
             }}
           />
-        </View>
-      </TouchableWithoutFeedback>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    justifyContent: "center",
-    flex: 1,
-    padding: 20,
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
-  },
-   modalContainer: {
-    flex: 1,
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
-  pickerContainer: {
-    margin: 20,
-    backgroundColor: "white",
-    borderRadius: 10,
-    padding: 20,
-  },
-  label: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  container: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 20,
-    width: "90%",
-  },
-  title: {
-    fontSize: 18,
-    marginBottom: 10,
-    textAlign: "center",
-    fontWeight: "bold",
-  },
-  monthButton: {
-    padding: 10,
-    margin: 5,
-    backgroundColor: theme.colors.primary,
-    borderRadius: 6,
-    width: "30%",
-    alignItems: "center",
-  },
-  monthText: {
-    color: "#fff",
-  },
-});
-
-
-
-
-// ModalCalendarMonth.js
-
-
-const years = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i);
-
+// Selector de mes/año. `onClose` recibe `{ month, year }` o `null` al cancelar.
 export const MonthPickerModal = ({ visible, onClose }) => {
-  const [selectedMonth, setSelectedMonth] = useState(null);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-
-  const months = [
-    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
-  ];
-
-  const handleMonthPress = (monthIndex) => {
-    setSelectedMonth(monthIndex + 1);
-    onClose({ month: monthIndex + 1, year: selectedYear });
-  };
+  const { colors, spacing, radii } = useTheme();
+  const [year, setYear] = useState(new Date().getFullYear());
 
   return (
-  <Modal visible={visible} animationType="fade" transparent>
-    <TouchableWithoutFeedback onPress={() => onClose(null)}>
-    <View style={styles.overlay}>
-      {/* Solo cierra si tocas fuera del contenido */}
-       <TouchableWithoutFeedback onPress={() => {}}>
-
-
-      {/* Contenido del modal que no debe cerrar el modal al interactuar */}
-      <View style={styles.container}>
-        <Text style={styles.title}>Selecciona el mes y año</Text>
-
-        <Picker
-          selectedValue={selectedYear}
-          style={{ height: 50 }}
-          onValueChange={(itemValue) => setSelectedYear(itemValue)}
+    <Modal visible={visible} animationType="fade" transparent>
+      <Pressable
+        onPress={() => onClose(null)}
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: colors.overlay,
+        }}
+      >
+        <Pressable
+          onPress={(e) => e.stopPropagation()}
+          style={{
+            width: "88%",
+            backgroundColor: colors.surface,
+            borderRadius: radii.lg,
+            padding: spacing.lg,
+            gap: spacing.md,
+          }}
         >
-          {years.map((year) => (
-            <Picker.Item key={year} label={year.toString()} value={year} />
-          ))}
-        </Picker>
+          <Text variant="subtitle" weight="bold" center>
+            Selecciona mes y año
+          </Text>
 
-        <FlatList
-          data={months}
-          numColumns={3}
-          keyExtractor={(item, index) => index.toString()}
-          renderItem={({ item, index }) => (
-            <TouchableOpacity
-              onPress={() => handleMonthPress(index)}
-              style={styles.monthButton}
-            >
-              <Text style={styles.monthText}>{item}</Text>
-            </TouchableOpacity>
-          )}
-        />
-      </View>
-       </TouchableWithoutFeedback>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: spacing.lg,
+            }}
+          >
+            <Pressable onPress={() => setYear((y) => y - 1)} hitSlop={10}>
+              <Text variant="subtitle" color="primary">
+                ‹
+              </Text>
+            </Pressable>
+            <Text variant="subtitle" weight="bold">
+              {year}
+            </Text>
+            <Pressable onPress={() => setYear((y) => y + 1)} hitSlop={10}>
+              <Text variant="subtitle" color="primary">
+                ›
+              </Text>
+            </Pressable>
+          </View>
 
-    </View>
-       </TouchableWithoutFeedback>
-
-  </Modal>
-
+          <View
+            style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}
+          >
+            {MESES.map((m, i) => (
+              <Pressable
+                key={m}
+                onPress={() => onClose({ month: i + 1, year })}
+                style={{
+                  width: "30%",
+                  flexGrow: 1,
+                  paddingVertical: spacing.sm,
+                  borderRadius: radii.sm,
+                  alignItems: "center",
+                  backgroundColor: colors.primarySoft,
+                }}
+              >
+                <Text color="primary" weight="medium">
+                  {m}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 };
-

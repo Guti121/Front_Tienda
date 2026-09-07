@@ -1,30 +1,18 @@
 import { Stack } from "expo-router";
 import { Dimensions, Platform } from "react-native";
 
-
-const isIpad = Platform.OS === 'ios' && Dimensions.get('window').width >= 768;
+const isIpad = Platform.OS === "ios" && Dimensions.get("window").width >= 768;
 
 export default function ModalsLayout() {
   return (
     <Stack>
       <Stack.Screen
-        name="modalQrCodeAddUserCompany"
-        options={{
-          presentation:"fullScreenModal",
-          animation: "fade",
-          title: "Codigo Qr",
-          headerShown: true,
-          
-        }}
-      />
-      <Stack.Screen
         name="modalGenerateQrCodeAddUserCompany"
         options={{
-          presentation: isIpad ? "fullScreenModal": "modal", // pantalla completa en iPad,
+          presentation: isIpad ? "fullScreenModal" : "modal", // pantalla completa en iPad,
           animation: "fade",
           title: "Agregar Aliado",
           headerShown: true,
-          
         }}
       />
       <Stack.Screen

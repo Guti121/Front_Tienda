@@ -1,75 +1,34 @@
-import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
-import { iconError } from "../src/components/icons/icons";
-import theme from "../src/components/themeStyles/theme";
+import { View } from "react-native";
 import { router } from "expo-router";
 
-export default function BadRequest() {
-  return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <View style={styles.viewContainer}>
-        <View style={styles.containerTextError}>
-          <Text style={styles.textError}>Ocurrio un error </Text>
-        </View>
-        <View style={styles.viewContainerIcon}>
-          <Text style={styles.textDetail}>
-            Es problable que esta vista no este disponible para este tipo de
-            usuario
-          </Text>
-          {iconError({ size: 100, color: "rgb(227, 62, 62)" })}
-        </View>
+import { useTheme } from "../src/theme/ThemeProvider";
+import { Button, Icon, Screen, Text } from "../src/ui";
 
-        <View style={styles.viewContainerPressble}>
-          <Pressable
-            onPress={() => router.replace("drawer")}
-            style={styles.PressableBack}
-          >
-            <Text style={{ color: "white", fontSize: 20 }}>Ir a Inicio</Text>
-          </Pressable>
-        </View>
+export default function BadRequest() {
+  const { colors, spacing } = useTheme();
+  return (
+    <Screen>
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          gap: spacing.lg,
+        }}
+      >
+        <Icon name="alert-circle-outline" size={72} color={colors.danger} />
+        <Text variant="title" weight="bold" center>
+          Ocurrió un error
+        </Text>
+        <Text muted center>
+          Es probable que esta vista no esté disponible para tu tipo de usuario.
+        </Text>
+        <Button
+          title="Ir a inicio"
+          fullWidth={false}
+          onPress={() => router.replace("/drawer")}
+        />
       </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  viewContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "black",
-  },
-  textError: { ...theme.textTitle },
-  PressableBack: {
-    padding: 10,
-    ...theme.pressable,
-  },
-  containerTextError: {
-    width: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "black",
-    ...theme.shadow,
-  },
-  textError: {
-    ...theme.textTitle,
-    color: "rgb(227, 62, 62)",
-    margin: 10,
-    fontSize: 28,
-  },
-  textDetail: {
-    margin: 10,
-    fontSize: 20,
-    color: "white",
-    textAlign: "center",
-  },
-  viewContainerIcon: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  viewContainerPressble: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-});

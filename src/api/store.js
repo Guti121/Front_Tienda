@@ -1,5 +1,4 @@
 // Ajustes de tienda: datos de la compañía, costos fijos, aliados y QR.
-// Reemplaza src/components/settingsStore/axiosRequest.jsx.
 import { api } from "./http";
 
 // -------------------------------------------------------------- Compañía

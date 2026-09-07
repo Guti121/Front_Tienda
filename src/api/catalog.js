@@ -1,5 +1,4 @@
-// Catálogo público (sin autenticación). Reemplaza
-// src/components/catalog/axiosRequest.jsx.
+// Catálogo público (sin autenticación).
 import { api } from "./http";
 
 const PUBLIC = { skipAuth: true };

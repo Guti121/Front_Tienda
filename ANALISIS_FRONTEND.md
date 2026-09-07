@@ -478,11 +478,36 @@ Verificado: `expo export --platform web` OK + eslint limpio.
 
 **Con esto TODAS las pantallas de la app están migradas a `src/ui/` + React Query.**
 
+**Incremento 11 (2026-09-06)** — Limpieza de código muerto. Verificado: `expo
+export --platform web` OK + eslint limpio (en los archivos tocados; el ruido
+`Delete ␍` del repo es pre-existente por CRLF).
+- [x] Migradas las 4 últimas dependientes de `theme.jsx`/`icons.jsx`:
+      `app/badRequest.jsx`, `app/modals/modalFilterProductIcon.jsx`,
+      `themeStyles/modalsCalendar.jsx` (ahora `useTheme()`; `MonthPickerModal` sin
+      el `Picker` roto de RN), `colletion/componentWebimage.jsx` (usa `<Icon>`).
+- [x] **Borrados (0 importadores):** `themeStyles/theme.jsx`,
+      `themeStyles/alerts.jsx`, `themeStyles/stylesCatalog.jsx`, `icons/icons.jsx`,
+      `icons/barNotification.jsx`, `icons/modalConfirm.jsx`, `customDrawer.jsx`,
+      `staticFile/indexAPP.jsx`, `colletion/componentMovilimage.jsx`,
+      `colletion/modalAddProductColletion.jsx`,
+      `colletion/product/modalUpdateProduct.jsx`,
+      `colletion/product/viewBarCode.jsx`,
+      `catalog/stylesCatalogo/buttonAnimate.jsx`,
+      `catalog/componentsPrincipalView/filterPView.jsx`, `catalog/infCompany.jsx`,
+      `{billing,colletion,settingsStore,stocktaking,catalog}/axiosRequest.jsx`,
+      `BillsGenerate/axiosReques.jsx`, `app/modals/modalQrCodeAddUserCompany.jsx`
+      (+ su `Stack.Screen`). **22 archivos.**
+- [x] **Deps quitadas:** `react-native-vector-icons`, `expo-linear-gradient`
+      (0 importadores). Ya se había quitado `react-webcam` en incr. 8.
+- Se conservan: `icons/functionFormat.jsx` (utils de pesos, muy usado),
+      `themeStyles/modalsCalendar.jsx`, `catalog/stylesCatalogo/{scrollImages,modalImage}.jsx`,
+      `catalog/CartContext.jsx`, `sesion/axiosRequest.jsx` (ya sobre `http.js`),
+      `colletion/componentWebimage.jsx`.
+
 **Pendiente:**
 - [ ] Romper el resto de componentes largos + hooks (`useProductSearch`).
-- [ ] **Incremento de limpieza**: borrar `react-native-vector-icons` + `icons.jsx`,
-      `themeStyles/theme.jsx`, `buttonAnimate.jsx`, `customDrawer.jsx` y todos los
-      `axiosRequest.jsx` de feature + stubs huérfanos.
+- [ ] Normalizar line-endings del repo a LF (`.gitattributes` + `--fix`) —
+      arrastra el ruido `Delete ␍` de eslint; se dejó fuera para no tocar todo.
 
 ### Fase 4 — Calidad
 - [ ] TS: migración incremental (`allowJs`, por módulo) **o** quitar
