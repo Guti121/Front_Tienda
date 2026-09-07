@@ -6,6 +6,7 @@ import { retrieveCompany } from "../../src/api/store";
 import { useUserCAWAuthRedirect } from "../../src/redux/viewsPermissions";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { Button, Icon, useToast } from "../../src/ui";
+import { CartProvider } from "../../src/components/catalog/CartContext";
 import PrincipalCatalog from "../../src/components/catalog/principalCatalog";
 
 export default function CatalogMyStoreDrawer() {
@@ -37,7 +38,11 @@ export default function CatalogMyStoreDrawer() {
           onPress={copyLink}
         />
       </View>
-      {storeName ? <PrincipalCatalog name={storeName} /> : null}
+      {storeName ? (
+        <CartProvider>
+          <PrincipalCatalog name={storeName} />
+        </CartProvider>
+      ) : null}
     </View>
   );
 }

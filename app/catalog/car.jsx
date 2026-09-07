@@ -25,14 +25,15 @@ export default function CartScreen() {
   const toast = useToast();
   const empresa = useSelector((state) => state.user.empresa);
 
-  const total = cartItems.reduce((sum, it) => sum + it.valor * it.cantidad, 0);
+  const subtotal = (it) => Number(it.valor) * it.cantidad;
+  const total = cartItems.reduce((sum, it) => sum + subtotal(it), 0);
 
   const enviarPedido = () => {
     if (cartItems.length === 0) return;
     let msg = "Hola, quisiera realizar el siguiente pedido:\n\n";
     cartItems.forEach((it) => {
       msg += `• ${it.numero_producto} ${it.nombre} x${it.cantidad} = ${pesosFormat(
-        it.valor * it.cantidad,
+        subtotal(it),
       )}\n`;
     });
     msg += `\nTotal: ${pesosFormat(total)}`;
@@ -90,7 +91,7 @@ export default function CartScreen() {
                     {item.nombre} x{item.cantidad}
                   </Text>
                   <Text weight="bold" color="primary">
-                    {pesosFormat(item.valor * item.cantidad)}
+                    {pesosFormat(subtotal(item))}
                   </Text>
                 </View>
                 <Icon

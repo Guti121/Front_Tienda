@@ -1,59 +1,76 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import Storage from '../token/localstorage';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 
-const CartContext = createContext();
+import Storage from "../token/localstorage";
+
+const KEY = "cartItems";
+const noop = () => {};
+
+// Valor por defecto: `useCart()` nunca devuelve undefined aunque el componente
+// quede fuera de un <CartProvider>.
+const CartContext = createContext({
+  cartItems: [],
+  addToCart: noop,
+  removeFromCart: noop,
+  clearCart: noop,
+});
 
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
+  const [ready, setReady] = useState(false);
 
+  // Carga inicial desde el storage.
   useEffect(() => {
-    const loadCart = async () => {
-      const saved = await Storage.getItem("cartItems");
-      
+    (async () => {
       try {
+        const saved = await Storage.getItem(KEY);
         const parsed = typeof saved === "string" ? JSON.parse(saved) : saved;
         setCartItems(Array.isArray(parsed) ? parsed : []);
-      } catch (e) {
-        console.error("Error parsing cartItems:", e);
+      } catch {
         setCartItems([]);
+      } finally {
+        setReady(true);
       }
-    };
-
-    loadCart();
+    })();
   }, []);
 
-
-
-  // Guardar carrito cada vez que cambia
+  // Persiste cada cambio (solo tras la carga inicial, para no pisar con []).
   useEffect(() => {
-     Storage.setItem("cartItems", JSON.stringify(cartItems));
-  }, [cartItems]);
+    if (!ready) return;
+    Storage.setItem(KEY, JSON.stringify(cartItems)).catch(() => {});
+  }, [cartItems, ready]);
 
-  const addToCart = (product) => {
+  const addToCart = useCallback((product) => {
     setCartItems((prev) => {
-      const found = prev.find((item) => item.id === product.id);
+      const found = prev.find((it) => it.id === product.id);
       if (found) {
-        return prev.map((item) =>
-          item.id === product.id
-            ? { ...item, cantidad: item.cantidad + (product.cantidad || 1) }
-            : item
+        return prev.map((it) =>
+          it.id === product.id
+            ? { ...it, cantidad: it.cantidad + (product.cantidad || 1) }
+            : it,
         );
-      } else {
-        return [...prev, { ...product, cantidad: product.cantidad || 1 }];
       }
+      return [...prev, { ...product, cantidad: product.cantidad || 1 }];
     });
-  };
+  }, []);
 
-  const removeFromCart = (productId) => {
-    setCartItems((prev) => prev.filter((item) => item.id !== productId));
-  };
+  const removeFromCart = useCallback(
+    (productId) =>
+      setCartItems((prev) => prev.filter((it) => it.id !== productId)),
+    [],
+  );
 
-  const clearCart = () => {
-    setCartItems([]);
-  };
+  const clearCart = useCallback(() => setCartItems([]), []);
 
   return (
-    <CartContext.Provider value={{ cartItems, addToCart, removeFromCart, clearCart }}>
+    <CartContext.Provider
+      value={{ cartItems, addToCart, removeFromCart, clearCart }}
+    >
       {children}
     </CartContext.Provider>
   );
