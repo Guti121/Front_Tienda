@@ -463,8 +463,22 @@ Verificado: `expo export --platform web` OK + eslint limpio.
   `buttonAnimate.jsx`, `settingsStore/axiosRequest.jsx`,
   `modalQrCodeAddUserCompany.jsx` → se borran en el incremento de limpieza.
 
+**Incremento 10 (2026-09-06)** — Ver facturas. Verificado: `expo export
+--platform web` OK + eslint limpio.
+- [x] **`src/api/billing.js`**: + `listInvoices({date,month,year})`,
+      `retrieveInvoice(id)`, `deleteInvoice(id)`. Reemplaza
+      `BillsGenerate/axiosReques.jsx` (huérfano).
+- [x] **`src/components/BillsGenerate/billsGenerate.jsx`** (231→~185) sobre
+      `src/ui/` + `useQuery` (por fecha). Búsqueda por N.º de factura navega al
+      detalle. Selector de fecha con `ModalCalendar` existente. `Card` de resumen.
+- [x] **`src/components/BillsGenerate/billsGenereteDetail.jsx`** (282→~205)
+      sobre `src/ui/` + `useQuery` + `useMutation` (eliminar en `Sheet`, invalida
+      `["invoices"]`, avisa que repone stock). Imprimir/compartir: `expo-print`
+      nativo, `window.open` web (HTML extraído a `facturaHtml`).
+
+**Con esto TODAS las pantallas de la app están migradas a `src/ui/` + React Query.**
+
 **Pendiente:**
-- [ ] Ver facturas (`app/billsGenerate/`) — única pantalla sin migrar.
 - [ ] Romper el resto de componentes largos + hooks (`useProductSearch`).
 - [ ] **Incremento de limpieza**: borrar `react-native-vector-icons` + `icons.jsx`,
       `themeStyles/theme.jsx`, `buttonAnimate.jsx`, `customDrawer.jsx` y todos los
