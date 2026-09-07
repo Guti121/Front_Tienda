@@ -421,15 +421,54 @@ web` OK + eslint limpio.
 - [x] `app/drawer/stocktaking.jsx` + `app/stockTaking/dailyStockTakingDrawer.jsx`:
       añadido `useUserCAuthRedirect` (solo creator, como el backend).
 
-**Pendiente del incremento:**
-- [ ] Resto de pantallas sobre `src/ui/` + React Query: catálogo
-      público, ajustes de tienda, perfil, QR aliado, **escáner de código de
-      barras** (`modalBarCode`, quitar `react-webcam` →
-      `expo-camera`/`expo-image-picker`).
-- [ ] Romper el resto de componentes de 400–650 líneas + hooks
-      (`useProductSearch`).
-- [ ] Al migrar todo: borrar `react-native-vector-icons` + `icons.jsx`,
-      `themeStyles/theme.jsx` y los `axiosRequest.jsx` de feature.
+**Incremento 8 (2026-09-06)** — Ajustes de tienda + QR aliado + escáner + perfil.
+Verificado: `expo export --platform web` OK + eslint limpio.
+- [x] **`src/api/store.js`** (nuevo): compañía (`retrieveCompany`/`updateCompany`/
+      `deleteCompany`), costos (`retrieveCosts`/`saveCosts`/`deleteCosts`),
+      aliados (`listAllies`/`removeAlly`), QR (`generateAllyQr`/`validateAllyQr`).
+      Reemplaza `settingsStore/axiosRequest.jsx` (huérfano).
+- [x] **`app/modals/modalBarCode.jsx`** reescrito sobre `src/ui/` + `expo-camera`
+      (`useCameraPermissions` + `CameraView`) en nativo y `expo-image-picker` en
+      web. **Se quitó `react-webcam`** (`npm uninstall`). Usa `src/api/billing` +
+      `addToCart` + `Sheet`/`Stepper`.
+- [x] **`app/drawer/addToCompanyDrawer.jsx`** reescrito sobre `src/ui/` +
+      `useCameraPermissions`. Escanea el QR, valida y fuerza re-login.
+- [x] **`app/modals/modalGenerateQrCodeAddUserCompany.jsx`** reescrito sobre
+      `src/ui/` + `useMutation` (`generateAllyQr`). Segmented control de rol.
+- [x] **`app/profile.jsx`** reescrito sobre `src/ui/` (tarjeta de usuario +
+      cerrar sesión).
+- [x] **`app/drawer/settingsStoreDrawer.jsx`** reescrito con `ListItem`.
+- [x] **`detailsMyStore.jsx`** (280→~200) sobre `src/ui/` + `useQuery`/`useMutation`
+      (editar con FormData, eliminar compañía en `Sheet`).
+- [x] **`costsStore.jsx`** (249→~205) sobre `src/ui/`. `useQuery` con `retry:false`
+      → 404 = "sin configurar" arranca en modo edición. `useMutation` guardar/borrar.
+- [x] **`addUserCompany.jsx`** (170→~175) sobre `src/ui/` + `useInfiniteQuery`
+      (lista de aliados) + `useMutation` (quitar en `Sheet`).
+
+**Incremento 9 (2026-09-06)** — Catálogo público. Verificado: `expo export
+--platform web` OK + eslint limpio.
+- [x] **`src/api/catalog.js`** (nuevo): `listCatalog`, `getCatalogCompany`,
+      `listCatalogTypes`, `getCatalogProduct` (todo `skipAuth`). Reemplaza
+      `catalog/axiosRequest.jsx` (huérfano).
+- [x] **`src/components/catalog/principalCatalog.jsx`** (313→~280) sobre `src/ui/`
+      + `useInfiniteQuery` (productos + tipos) + `useQuery` (empresa). Filtro de
+      tipo en `Sheet` (reemplaza `filterPView.jsx`, huérfano). FAB carrito con badge.
+- [x] **`src/components/catalog/productDetail.jsx`** (256→~105) sobre `src/ui/`
+      + `useQuery`. `Stepper`, galería `HorizontalImageScroller` reutilizada.
+- [x] **`app/catalog/car.jsx`** (203→~145) sobre `src/ui/`. Total + vaciar +
+      "Enviar pedido" (WhatsApp). `CartContext` se conserva sin cambios.
+- [x] **`app/drawer/catalog.jsx`** reescrito: `useQuery` del nombre de tienda +
+      "Copiar link" con `expo-clipboard` + `<PrincipalCatalog>`.
+- Nota huérfanos: `catalog/axiosRequest.jsx`, `filterPView.jsx`, `infCompany.jsx`,
+  `buttonAnimate.jsx`, `settingsStore/axiosRequest.jsx`,
+  `modalQrCodeAddUserCompany.jsx` → se borran en el incremento de limpieza.
+
+**Pendiente:**
+- [ ] Ver facturas (`app/billsGenerate/`) — única pantalla sin migrar.
+- [ ] Romper el resto de componentes largos + hooks (`useProductSearch`).
+- [ ] **Incremento de limpieza**: borrar `react-native-vector-icons` + `icons.jsx`,
+      `themeStyles/theme.jsx`, `buttonAnimate.jsx`, `customDrawer.jsx` y todos los
+      `axiosRequest.jsx` de feature + stubs huérfanos.
 
 ### Fase 4 — Calidad
 - [ ] TS: migración incremental (`allowJs`, por módulo) **o** quitar

@@ -1,256 +1,112 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  Image,
-  StyleSheet,
-  ActivityIndicator,
-  ScrollView,
-  Pressable,
-  Alert,
-  useWindowDimensions,
-  Platform,
-} from "react-native";
-import { productDetailRequest } from "./axiosRequest";
-import { pesosFormat } from "../icons/functionFormat";
-import { useCart } from "./CartContext"; // Asegúrate de que la ruta sea correcta
-import AnimatedButton from "./stylesCatalogo/buttonAnimate";
-import { useSelector } from "react-redux";
+import { useState } from "react";
+import { Image, View } from "react-native";
+import { router } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
+
+import { getCatalogProduct } from "../../api/catalog";
+import { useCart } from "./CartContext";
 import HorizontalImageScroller from "./stylesCatalogo/scrollImages";
 import ImageModal from "./stylesCatalogo/modalImage";
-import { showSessionAlert } from "../themeStyles/alerts";
-import { router } from "expo-router";
+import { useTheme } from "../../theme/ThemeProvider";
+import {
+  Button,
+  Card,
+  Loader,
+  Screen,
+  Stepper,
+  Text,
+  useToast,
+} from "../../ui";
+import { pesosFormat } from "../icons/functionFormat";
+
+const FALLBACK_IMG =
+  "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
 
 export default function DetailProductCatalog({ productId, name }) {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [quantity, setQuantity] = useState(1); // <- cantidad seleccionada
-  const { width } = useWindowDimensions();
-  const { addToCart } = useCart(); // Hook del contexto del carrito
-  const empresa = useSelector((state) => state.user.empresa);
+  const { spacing } = useTheme();
+  const toast = useToast();
+  const { addToCart } = useCart();
+  const [qty, setQty] = useState(1);
+  const [zoom, setZoom] = useState(null);
 
-  const requestProductDetail = async (id) => {
-    try {
-      const response = await productDetailRequest(name, id);
-      setData(response.data);
-        
-    } catch (error) {
-      showSessionAlert('Error','Error al obtener detalles del producto',()=>router.back())
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["catalog", "product", name, productId],
+    queryFn: () => getCatalogProduct(name, productId),
+    enabled: !!productId,
+  });
 
-
-
-  useEffect(() => {
-    requestProductDetail(productId); 
-  }, [productId]);
-
-
-  if (loading) {
+  if (isLoading) return <Loader label="Cargando…" />;
+  if (isError || !data) {
     return (
-      <View style={styles.loader}>
-        <ActivityIndicator size="large" color="#5e5ce6" />
-      </View>
-    );
-  }
-
-  if (!data) {
-    return (
-      <View style={styles.loader}>
-        <Text style={{ color: "#444" }}>
-          No se encontró información del producto.
+      <Screen>
+        <Text color="danger" center>
+          No se encontró el producto.
         </Text>
-      </View>
+        <Button
+          title="Volver"
+          variant="secondary"
+          onPress={() => router.back()}
+        />
+      </Screen>
     );
   }
 
-  const imageUri = data.image?.trim()
-    ? data.image
-    : "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
+  const imgs = (data.imagenes ?? []).map((i) => i.imagen).filter(Boolean);
 
   return (
-    <ScrollView style={styles.container}>
-      {Array.isArray(data.imagenes) && data.imagenes.length > 0 ? (
-  <HorizontalImageScroller
-    images={data.imagenes.map((img) => img.imagen)}
-    onImagePress={(imgUrl) => {
-      setSelectedImage(imgUrl);
-    }}
-  />
-) : (
-  <Image
-    source={{ uri: imageUri }}
-    style={{
-      width: "100%",
-      maxWidth: 500,
-      aspectRatio: 1,
-      alignSelf: "center",
-    }}
-    resizeMode="cover"
-  />
-)}
-
-      <View style={styles.infoBox}>
-        <Text numberOfLines={2} style={styles.name}>{data.nombre}</Text>
-        <Text style={styles.price}>{pesosFormat(data.valor)}</Text>
-        <Text style={[styles.detail, styles.detailLabel]}>
-          Detalles del producto:
-        </Text>
-        <Text style={styles.detail}>{data.detalles || "No especificado"}</Text>
-        <Text style={[styles.detail, styles.detailLabel]}>
-          Tipo:
-        </Text>
-        <Text style={styles.detail}>{data.tipo_producto || "No especificado"}</Text>
-        <Text style={styles.detail}>Código: #{data.numero_producto}</Text>
-
-        {/* 🔢 Selector de cantidad */}
-        <View style={styles.quantityContainer}>
-          <Pressable
-            onPress={() => setQuantity((q) => (q > 1 ? q - 1 : 1))}
-            style={styles.quantityButton}
-          >
-            <Text style={styles.quantityButtonText}>-</Text>
-          </Pressable>
-          <Text style={styles.quantityText}>{quantity}</Text>
-          <Pressable
-            onPress={() => setQuantity((q) => q + 1)}
-            style={styles.quantityButton}
-          >
-            <Text style={styles.quantityButtonText}>+</Text>
-          </Pressable>
-        </View>
-        {/* 🛒 Botón añadir al carrito */}
-
-      </View>
-        <AnimatedButton style={styles.cartButton} title='Agregar a Carrito' onPress={() => {
-                                                addToCart({ ...data, cantidad: quantity });
-                                                if (Platform.OS === 'web') {
-                                                    window.alert('Producto añadido al carrito');
-                                                    } else {
-                                                    Alert.alert('Éxito', 'Producto añadido al carrito');
-                                                    }
-
-                                                }}
-            textStyle={styles.cartButtonText}
+    <Screen scroll padded={false}>
+      {imgs.length > 0 ? (
+        <HorizontalImageScroller images={imgs} onImagePress={setZoom} />
+      ) : (
+        <Image
+          source={{ uri: FALLBACK_IMG }}
+          style={{ width: "100%", height: 260, resizeMode: "cover" }}
         />
-         <ImageModal
-                visible={!!selectedImage} 
-                imageUri={selectedImage}
-                onClose={() => setSelectedImage(null)}
-                />
-    </ScrollView>
+      )}
+
+      <View style={{ padding: spacing.lg, gap: spacing.md }}>
+        <Text variant="title" weight="bold">
+          {data.nombre}
+        </Text>
+        <Text variant="subtitle" weight="bold" color="primary">
+          {pesosFormat(data.valor)}
+        </Text>
+
+        <Card level={0} style={{ gap: spacing.xs }}>
+          <Text variant="small" weight="bold" muted>
+            DETALLES
+          </Text>
+          <Text>{data.detalles || "No especificado"}</Text>
+          <Text variant="small" muted style={{ marginTop: spacing.xs }}>
+            Tipo: {data.tipo_producto || "—"} · #{data.numero_producto}
+          </Text>
+        </Card>
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Text muted>Cantidad</Text>
+          <Stepper value={qty} onChange={setQty} />
+        </View>
+
+        <Button
+          title="Agregar al carrito"
+          onPress={() => {
+            addToCart({ ...data, cantidad: qty });
+            toast.success("Producto añadido al carrito");
+          }}
+        />
+      </View>
+
+      <ImageModal
+        visible={!!zoom}
+        imageUri={zoom}
+        onClose={() => setZoom(null)}
+      />
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f8f9fa",
-  },
-  loader: {
-    flex: 1,
-    backgroundColor: "#f8f9fa",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  image: {
-    // Left empty or remove if not needed, as styles are now inline
-  },
-  infoBox: {
-    paddingHorizontal: 24,
-    alignItems: "flex-start",
-    backgroundColor: "#ffffff",
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    marginTop: -20,
-    paddingTop: 30,
-    paddingBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 5,
-  },
-  name: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#222222",
-    marginBottom: 8,
-  },
-  price: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#5e5ce6",
-    marginBottom: 16,
-  },
-  detail: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: "#555555",
-    marginBottom: 6,
-  },
-  detailLabel: {
-    fontWeight: "bold",
-    marginTop: 10,
-  },
-  quantityContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 24,
-    marginBottom: 24,
-    backgroundColor: "#f0f2f5",
-    borderRadius: 30,
-    padding: 6,
-    alignSelf: "flex-start",
-  },
-  quantityButton: {
-    backgroundColor: "#ffffff",
-    borderRadius: 20,
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  quantityButtonText: {
-    fontSize: 22,
-    color: "#5e5ce6",
-    fontWeight: "bold",
-    lineHeight: 24,
-  },
-  quantityText: {
-    fontSize: 18,
-    color: "#333333",
-    minWidth: 40,
-    textAlign: "center",
-    fontWeight: "700",
-  },
-  cartButton: {
-    backgroundColor: "#5e5ce6",
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 30,
-    alignSelf: "stretch",
-    alignItems: "center",
-    marginHorizontal: 20,
-    marginBottom: 20,
-    marginTop: 10,
-    shadowColor: "#5e5ce6",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  cartButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-});
