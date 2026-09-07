@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Animated,
   FlatList,
   Image,
   Pressable,
@@ -8,6 +7,14 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import Animated, {
+  Easing,
+  runOnJS,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { router } from "expo-router";
 import { useDispatch } from "react-redux";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -26,6 +33,8 @@ import { pesosFormat } from "../icons/functionFormat";
 
 const MAX_W = 1160;
 const NAV_H = 52;
+// ease-out fuerte para UI (skill animate-expo: los Easing de fábrica son débiles)
+const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 const FALLBACK_IMG =
   "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
 
@@ -34,12 +43,124 @@ const esReciente = (fecha) => {
   return (Date.now() - new Date(fecha).getTime()) / 86400000 <= 15;
 };
 
+// Tarjeta de producto con press-feedback. Va a nivel de módulo para poder usar
+// hooks de animación dentro de un renderItem de FlatList.
+// Motion: feedback, decenas de veces/día -> escala imperceptible <150ms, sin
+// tocar la sombra (elevation re-renderiza cada frame en Android).
+function CatalogCard({ item, width, gutter, onOpen, onQuickAdd }) {
+  const { colors, spacing, radii, shadow } = useTheme();
+  const reduced = useReducedMotion();
+
+  const cardScale = useSharedValue(1);
+  const addScale = useSharedValue(1);
+  const cardStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: cardScale.value }],
+  }));
+  const addStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: addScale.value }],
+  }));
+
+  const press = (sv, to, ms) => {
+    sv.value = withTiming(reduced && to < 1 ? 1 : to, {
+      duration: ms,
+      easing: EASE_OUT,
+    });
+  };
+
+  const uri = mediaUrl(item?.image_principal) || FALLBACK_IMG;
+
+  return (
+    <View style={{ width, padding: gutter }}>
+      <Pressable
+        onPress={() => onOpen(item.id)}
+        onPressIn={() => press(cardScale, 0.97, 120)}
+        onPressOut={() => press(cardScale, 1, 140)}
+      >
+        <Animated.View
+          style={[
+            {
+              backgroundColor: colors.surface,
+              borderRadius: radii.lg,
+              borderWidth: 1,
+              borderColor: colors.border,
+              overflow: "hidden",
+            },
+            shadow(1),
+            cardStyle,
+          ]}
+        >
+          <View style={{ backgroundColor: colors.surfaceAlt }}>
+            <Image
+              source={{ uri }}
+              style={{ width: "100%", aspectRatio: 1, resizeMode: "cover" }}
+            />
+            {esReciente(item.creado_en) ? (
+              <View
+                style={{
+                  position: "absolute",
+                  top: spacing.sm,
+                  left: spacing.sm,
+                }}
+              >
+                <Badge label="Nuevo" tone="brand" />
+              </View>
+            ) : null}
+            <Pressable
+              onPress={() => onQuickAdd(item)}
+              onPressIn={() => press(addScale, 0.88, 90)}
+              onPressOut={() => press(addScale, 1, 120)}
+              hitSlop={8}
+              style={{
+                position: "absolute",
+                right: spacing.sm,
+                bottom: spacing.sm,
+              }}
+            >
+              <Animated.View
+                style={[
+                  {
+                    width: 36,
+                    height: 36,
+                    borderRadius: radii.pill,
+                    backgroundColor: colors.primary,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  },
+                  shadow(2),
+                  addStyle,
+                ]}
+              >
+                <Icon name="plus" size={20} color={colors.textOnBrand} />
+              </Animated.View>
+            </Pressable>
+          </View>
+
+          <View style={{ padding: spacing.md, gap: 2 }}>
+            {item.tipo_producto ? (
+              <Text variant="caption" muted style={{ letterSpacing: 0.5 }}>
+                {String(item.tipo_producto).toUpperCase()}
+              </Text>
+            ) : null}
+            <Text weight="medium" numberOfLines={1}>
+              {item.nombre}
+            </Text>
+            <Text variant="subtitle" weight="bold" color="primary">
+              {pesosFormat(item.valor)}
+            </Text>
+          </View>
+        </Animated.View>
+      </Pressable>
+    </View>
+  );
+}
+
 export default function PrincipalCatalog({ name }) {
   const dispatch = useDispatch();
   const toast = useToast();
   const { colors, spacing, radii, shadow } = useTheme();
   const { width, height } = useWindowDimensions();
   const { cartItems, addToCart } = useCart();
+  const reduced = useReducedMotion();
 
   const cols = width >= 1100 ? 4 : width >= 720 ? 3 : 2;
   const gutter = spacing.sm;
@@ -47,7 +168,31 @@ export default function PrincipalCatalog({ name }) {
   const [tipo, setTipo] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuMounted, setMenuMounted] = useState(false);
-  const menuAnim = useRef(new Animated.Value(0)).current;
+
+  // Menú desplegable: apertura/salida controladas por un shared value en el hilo
+  // de UI. Salida más rápida que la entrada; sin overshoot (un panel que hizo
+  // fade no debe rebotar).
+  const menu = useSharedValue(0);
+  useEffect(() => {
+    if (menuOpen) setMenuMounted(true);
+    menu.value = withTiming(
+      menuOpen ? 1 : 0,
+      { duration: menuOpen ? 160 : 120, easing: EASE_OUT },
+      (finished) => {
+        "worklet";
+        if (finished && !menuOpen) runOnJS(setMenuMounted)(false);
+      },
+    );
+  }, [menuOpen, menu]);
+
+  const backdropStyle = useAnimatedStyle(() => ({ opacity: menu.value }));
+  const panelStyle = useAnimatedStyle(() => ({
+    opacity: menu.value,
+    transform: [{ translateY: reduced ? 0 : (menu.value - 1) * 8 }],
+  }));
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${menu.value * 180}deg` }],
+  }));
 
   const companyQ = useQuery({
     queryKey: ["catalog", "company", name],
@@ -59,23 +204,6 @@ export default function PrincipalCatalog({ name }) {
   useEffect(() => {
     if (company) dispatch(setEmpresa(company));
   }, [company, dispatch]);
-
-  useEffect(() => {
-    if (menuOpen) {
-      setMenuMounted(true);
-      Animated.timing(menuAnim, {
-        toValue: 1,
-        duration: 160,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      Animated.timing(menuAnim, {
-        toValue: 0,
-        duration: 130,
-        useNativeDriver: true,
-      }).start(({ finished }) => finished && setMenuMounted(false));
-    }
-  }, [menuOpen, menuAnim]);
 
   const productsQ = useInfiniteQuery({
     queryKey: ["catalog", "list", name, tipo],
@@ -99,6 +227,7 @@ export default function PrincipalCatalog({ name }) {
   const types = typesQ.data?.results ?? [];
   const cartCount = cartItems.reduce((n, it) => n + (it.cantidad || 1), 0);
   const activeType = types.find((t) => t.id === tipo);
+  const filterActive = tipo || menuOpen;
 
   const openProduct = (id) =>
     router.push({ pathname: "/catalog/productDetail", params: { id, name } });
@@ -120,75 +249,15 @@ export default function PrincipalCatalog({ name }) {
     setMenuOpen(false);
   };
 
-  const renderItem = ({ item }) => {
-    const uri = mediaUrl(item?.image_principal) || FALLBACK_IMG;
-    return (
-      <View style={{ width: `${100 / cols}%`, padding: gutter }}>
-        <Pressable
-          onPress={() => openProduct(item.id)}
-          style={({ pressed }) => ({
-            backgroundColor: colors.surface,
-            borderRadius: radii.lg,
-            borderWidth: 1,
-            borderColor: colors.border,
-            overflow: "hidden",
-            transform: [{ translateY: pressed ? -1 : 0 }],
-            ...(pressed ? shadow(2) : shadow(1)),
-          })}
-        >
-          <View style={{ backgroundColor: colors.surfaceAlt }}>
-            <Image
-              source={{ uri }}
-              style={{ width: "100%", aspectRatio: 1, resizeMode: "cover" }}
-            />
-            {esReciente(item.creado_en) ? (
-              <View
-                style={{
-                  position: "absolute",
-                  top: spacing.sm,
-                  left: spacing.sm,
-                }}
-              >
-                <Badge label="Nuevo" tone="brand" />
-              </View>
-            ) : null}
-            <Pressable
-              onPress={() => quickAdd(item)}
-              hitSlop={6}
-              style={{
-                position: "absolute",
-                right: spacing.sm,
-                bottom: spacing.sm,
-                width: 36,
-                height: 36,
-                borderRadius: radii.pill,
-                backgroundColor: colors.primary,
-                alignItems: "center",
-                justifyContent: "center",
-                ...shadow(2),
-              }}
-            >
-              <Icon name="plus" size={20} color={colors.textOnBrand} />
-            </Pressable>
-          </View>
-
-          <View style={{ padding: spacing.md, gap: 2 }}>
-            {item.tipo_producto ? (
-              <Text variant="caption" muted style={{ letterSpacing: 0.5 }}>
-                {String(item.tipo_producto).toUpperCase()}
-              </Text>
-            ) : null}
-            <Text weight="medium" numberOfLines={1}>
-              {item.nombre}
-            </Text>
-            <Text variant="subtitle" weight="bold" color="primary">
-              {pesosFormat(item.valor)}
-            </Text>
-          </View>
-        </Pressable>
-      </View>
-    );
-  };
+  const renderItem = ({ item }) => (
+    <CatalogCard
+      item={item}
+      width={`${100 / cols}%`}
+      gutter={gutter}
+      onOpen={openProduct}
+      onQuickAdd={quickAdd}
+    />
+  );
 
   const Hero = (
     <View
@@ -200,14 +269,16 @@ export default function PrincipalCatalog({ name }) {
       }}
     >
       <View
-        style={{
-          padding: 4,
-          borderRadius: radii.pill,
-          borderWidth: 1,
-          borderColor: colors.border,
-          backgroundColor: colors.surface,
-          ...shadow(1),
-        }}
+        style={[
+          {
+            padding: 4,
+            borderRadius: radii.pill,
+            borderWidth: 1,
+            borderColor: colors.border,
+            backgroundColor: colors.surface,
+          },
+          shadow(1),
+        ]}
       >
         <Image
           source={{ uri: mediaUrl(company?.url_logo) || FALLBACK_IMG }}
@@ -362,21 +433,24 @@ export default function PrincipalCatalog({ name }) {
               paddingHorizontal: spacing.sm,
               borderRadius: radii.pill,
               borderWidth: 1,
-              borderColor: tipo || menuOpen ? colors.primary : colors.border,
-              backgroundColor:
-                tipo || menuOpen ? colors.primarySoft : colors.surface,
+              borderColor: filterActive ? colors.primary : colors.border,
+              backgroundColor: filterActive
+                ? colors.primarySoft
+                : colors.surface,
             }}
           >
             <Icon
               name="shape-outline"
               size={16}
-              color={tipo || menuOpen ? colors.primary : colors.textMuted}
+              color={filterActive ? colors.primary : colors.textMuted}
             />
-            <Icon
-              name={menuOpen ? "chevron-up" : "chevron-down"}
-              size={16}
-              color={tipo || menuOpen ? colors.primary : colors.textMuted}
-            />
+            <Animated.View style={chevronStyle}>
+              <Icon
+                name="chevron-down"
+                size={16}
+                color={filterActive ? colors.primary : colors.textMuted}
+              />
+            </Animated.View>
           </Pressable>
         ) : null}
 
@@ -455,41 +529,37 @@ export default function PrincipalCatalog({ name }) {
       {menuMounted ? (
         <>
           <Animated.View
-            style={{
-              position: "absolute",
-              top: NAV_H,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: colors.overlay,
-              opacity: menuAnim,
-              zIndex: 20,
-            }}
+            style={[
+              {
+                position: "absolute",
+                top: NAV_H,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: colors.overlay,
+                zIndex: 20,
+              },
+              backdropStyle,
+            ]}
           >
             <Pressable style={{ flex: 1 }} onPress={() => setMenuOpen(false)} />
           </Animated.View>
 
           <Animated.View
-            style={{
-              position: "absolute",
-              top: NAV_H,
-              left: 0,
-              right: 0,
-              zIndex: 25,
-              backgroundColor: colors.surface,
-              borderBottomWidth: 1,
-              borderBottomColor: colors.border,
-              opacity: menuAnim,
-              transform: [
-                {
-                  translateY: menuAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [-8, 0],
-                  }),
-                },
-              ],
-              ...shadow(3),
-            }}
+            style={[
+              {
+                position: "absolute",
+                top: NAV_H,
+                left: 0,
+                right: 0,
+                zIndex: 25,
+                backgroundColor: colors.surface,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.border,
+              },
+              shadow(3),
+              panelStyle,
+            ]}
           >
             <View
               style={{
