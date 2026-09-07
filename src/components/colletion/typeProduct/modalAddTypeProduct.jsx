@@ -1,124 +1,64 @@
-import {
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import theme, { height, width } from "../../themeStyles/theme";
-import { expiredGetToken } from "../../axios/generalAxiosRequest";
-import { router } from "expo-router";
-import { handleCreateTypeProduct } from "../axiosRequest";
 import { useState } from "react";
-import { BarNotification } from "../../icons/barNotification";
-import { checkIcon } from "../../icons/icons";
+import { View } from "react-native";
+import { router } from "expo-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+import { createTypeProduct } from "../../../api/products";
+import { ApiError } from "../../../api/http";
+import { useTheme } from "../../../theme/ThemeProvider";
+import { Button, Screen, Text, TextField, useToast } from "../../../ui";
 
 export const ModalAddTypeProduct = () => {
-  const [error, setError] = useState(false);
-  const [nameTypeProduct, setNameTypeProduct] = useState("");
-  const [stateBar, setStateBar] = useState(false);
+  const { spacing } = useTheme();
+  const toast = useToast();
+  const queryClient = useQueryClient();
 
-  const handleRequest = async () => {
-    try {
-      const token = await expiredGetToken();
-      if (!token) {
-        router.replace("/login");
-        return;
-      }
-      try {
-        if (!nameTypeProduct) {
-          throw new Error("El nombre del tipo de producto es obligatorio"); // Rompe el try
-        }
-        const request = await handleCreateTypeProduct({
-          token,
-          nameTypeProduct,
-        });
-        if (request.status === 201) {
-          setStateBar(true);
-          setNameTypeProduct("");
-          setTimeout(() => setStateBar(false), 3000);
-        }
-      } catch {
-        setError("Error al Crear el tipo de producto");
-      }
-    } catch {
-      router.replace("/login");
+  const [nombre, setNombre] = useState("");
+  const [error, setError] = useState(null);
+
+  const create = useMutation({
+    mutationFn: (tipo) => createTypeProduct(tipo),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["typeProducts"] });
+      toast.success("Tipo de producto creado");
+      setNombre("");
+      if (router.canGoBack()) router.back();
+    },
+    onError: (err) =>
+      setError(
+        err instanceof ApiError ? err.message : "No se pudo crear el tipo.",
+      ),
+  });
+
+  const submit = () => {
+    if (!nombre.trim()) {
+      setError("El nombre es obligatorio.");
+      return;
     }
+    setError(null);
+    create.mutate(nombre.trim());
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      {stateBar && (
-        <BarNotification
-          icon={checkIcon()}
-          message="Se creo Tipo de producto exitosamente"
-          color="rgb(60, 196, 60)"
+    <Screen scroll>
+      <View style={{ gap: spacing.lg }}>
+        <Text variant="title" weight="bold">
+          Nuevo tipo de producto
+        </Text>
+        <TextField
+          label="Nombre del tipo"
+          value={nombre}
+          onChangeText={(t) => {
+            setNombre(t);
+            setError(null);
+          }}
+          placeholder="Ej. Bebidas, Aseo, Snacks…"
+          error={error}
         />
-      )}
-      <ScrollView style={{ flex: 1, ...theme.backgroundColorPrincipal }}>
-        <View style={{ flex: 1 }}>
-          <View style={styles.containerHeader}>
-            <Text style={styles.textHeader}>
-              Ingrese los datos de Tipo de producto
-            </Text>
-          </View>
-          <View style={styles.containerStyleInput}>
-            <Text style={styles.textInputStyle}>
-              Nombre de Tipo de Producto
-            </Text>
-            <TextInput
-              placeholder="Ingrese Nombre del Tipo"
-              value={nameTypeProduct}
-              style={styles.inputStyle}
-              onChangeText={(text) => {
-                setNameTypeProduct(text);
-                setError(false);
-              }}
-            />
-            {error && <Text style={{ color: "red" }}>{error}</Text>}
-          </View>
-
-          <View style={styles.containerPressable}>
-            <Pressable
-              style={styles.pressableCreate}
-              onPressOut={() => handleRequest()}
-            >
-              <Text style={{ color: "white" }}>Crear</Text>
-            </Pressable>
-          </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        <Button title="Crear" onPress={submit} loading={create.isPending} />
+      </View>
+    </Screen>
   );
 };
-const styles = StyleSheet.create({
-  containerHeader: {
-    width: "100%",
-    height: height * 0.1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  textHeader: { ...theme.textTitle },
-  containerStyleInput: {
-    padding: 5,
-    width: "100%",
-    height: height * 0.5,
-  },
-  inputStyle: {
-    ...theme.textInputGlobal,
-    padding: 5,
-    marginVertical: 5,
-  },
-  containerPressable: {
-    width: "100%",
-    height: height * 0.1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pressableCreate: {
-    ...theme.pressable,
-    minWidth: width * 0.3,
-  },
-});
+
+export default ModalAddTypeProduct;

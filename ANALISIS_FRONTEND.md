@@ -387,10 +387,28 @@ Verificado: `expo export --platform web` OK + eslint limpio.
 - Nota: `modalAddProductColletion.jsx` queda huérfano; se borra en la limpieza.
   `componentWebimage.jsx` (subida de imágenes) se conserva sin cambios.
 
+**Incremento 6 (2026-09-06)** — Tipos de producto. Verificado: `expo export
+--platform web` OK + eslint limpio.
+- [x] **`src/components/colletion/typeProduct/typeProduct.jsx`** reescrito
+      (277→~185) sobre `src/ui/` + `useInfiniteQuery` (búsqueda con debounce,
+      scroll infinito). Filas `Card`, eliminar en `Sheet` que **avisa que borra
+      en cascada los productos del tipo** (comportamiento del backend). Delete
+      vía `useMutation` → invalida `["typeProducts"]` + `["products"]` + `toast`.
+- [x] **`src/components/colletion/typeProduct/modalAddTypeProduct.jsx`** reescrito
+      (~130→~65) sobre `src/ui/` + `useMutation` (`createTypeProduct`). Al crear:
+      invalida, `toast`, y `router.back()` si se puede (sirve para el modal y
+      para la ruta abierta desde el picker de alta).
+- [x] **`src/api/products.js`**: + `filterTypeProducts({q,page})` (normaliza el
+      404 de "sin resultados" a lista vacía), `createTypeProduct`,
+      `deleteTypeProduct`.
+- [x] `app/products/addTypeProductDrawer.jsx`: quitado `export default function()`
+      anónimo + imports muertos.
+- Con esto la **pestaña Productos queda 100% migrada** (productos + tipos).
+
 **Pendiente del incremento:**
-- [ ] Resto de pantallas sobre `src/ui/` + React Query: **tipos de producto**,
-      inventario, catálogo público, ajustes de tienda, perfil, QR aliado,
-      **escáner de código de barras** (`modalBarCode`, quitar `react-webcam` →
+- [ ] Resto de pantallas sobre `src/ui/` + React Query: inventario, catálogo
+      público, ajustes de tienda, perfil, QR aliado, **escáner de código de
+      barras** (`modalBarCode`, quitar `react-webcam` →
       `expo-camera`/`expo-image-picker`).
 - [ ] Romper el resto de componentes de 400–650 líneas + hooks
       (`useProductSearch`).

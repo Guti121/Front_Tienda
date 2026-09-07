@@ -1,6 +1,6 @@
 // API de productos sobre el cliente único (src/api/http.js). Sin `token` por
 // parámetro. Reemplaza gradualmente a src/components/colletion/axiosRequest.jsx.
-import { api } from "./http";
+import { api, ApiError } from "./http";
 
 const qs = (obj) => {
   const p = new URLSearchParams();
@@ -66,4 +66,30 @@ export async function createProduct(formData) {
 export async function listTypeProducts(pageUrl = "listType/") {
   const { data } = await api.get(pageUrl);
   return data; // { results, next, ... }
+}
+
+// GET /typeProductFilter/?q=&page=  (admin, paginado). Devuelve 404 si no hay
+// coincidencias -> se normaliza a lista vacía.
+export async function filterTypeProducts({ q = "", page = 1 } = {}) {
+  try {
+    const { data } = await api.get(`typeProductFilter/${qs({ q, page })}`);
+    return data;
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      return { results: [], next: null };
+    }
+    throw err;
+  }
+}
+
+// POST /createtype/  { tipo_producto }
+export async function createTypeProduct(tipo_producto) {
+  const { data } = await api.post("createtype/", { tipo_producto });
+  return data;
+}
+
+// DELETE /destroytypeProduct/<id>/  (⚠ el backend borra en cascada los
+// productos de ese tipo).
+export async function deleteTypeProduct(id) {
+  await api.delete(`destroytypeProduct/${id}/`);
 }
