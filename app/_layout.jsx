@@ -65,10 +65,6 @@ export default function RootLayout() {
                   name="badRequest"
                   options={{ headerShown: false, title: "Bad" }}
                 />
-                <Stack.Screen
-                  name="catalog"
-                  options={{ presentation: "card", headerShown: false }}
-                />
 
                 <Stack.Screen
                   name="profile"

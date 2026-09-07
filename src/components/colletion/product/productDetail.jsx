@@ -29,7 +29,7 @@ import {
 } from "../../../ui";
 import { pesosFormat } from "../../icons/functionFormat";
 import { isWeb } from "../../token/localstorage";
-import ImageModal from "../../catalog/stylesCatalogo/modalImage";
+import ImageModal from "./imageModal";
 
 const FALLBACK_IMG =
   "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";

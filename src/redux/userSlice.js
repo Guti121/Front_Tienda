@@ -2,7 +2,6 @@ import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
   user: null,
-  empresa: null, // This can be used to store company information if needed
 };
 
 const userSlice = createSlice({
@@ -12,16 +11,12 @@ const userSlice = createSlice({
     setUser: (state, action) => {
       state.user = action.payload;
     },
-     setEmpresa: (state, action) => {
-    state.empresa = action.payload;
-    },
     // This action can be used to clear the user state, for example on logout
     logout: (state) => {
       state.user = null;
-      state.empresa = null; // Clear empresa state on logout
     },
   },
 });
 
-export const { setUser,setEmpresa, logout } = userSlice.actions;
+export const { setUser, logout } = userSlice.actions;
 export default userSlice.reducer;
