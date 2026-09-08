@@ -19,6 +19,12 @@ const OPTIONS = [
     route: "/myStoreSettings/detailsMyStoreDrawer",
   },
   {
+    icon: "palette-outline",
+    title: "Apariencia del catálogo",
+    subtitle: "Tipografía, portada y frase",
+    route: "/myStoreSettings/catalogAppearanceDrawer",
+  },
+  {
     icon: "cash-multiple",
     title: "Mis costos fijos",
     subtitle: "Base para el precio sugerido",
