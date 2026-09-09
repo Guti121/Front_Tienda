@@ -26,6 +26,7 @@ import {
   PALETTE_LIST,
   resolveCatalogTheme,
 } from "../../../theme/catalogTheme";
+import StorefrontPreview from "./StorefrontPreview";
 import {
   Button,
   Card,
@@ -65,43 +66,56 @@ const COLOR_ROWS = [
     slot: "accent",
     key: "catalog_color_accent",
     label: "Botones y enlaces",
+    hint: "CTA, botones, contador del carrito, barra de anuncio",
     group: "base",
   },
   {
     slot: "bg",
     key: "catalog_color_bg",
     label: "Fondo de página",
+    hint: "Fondo de la página, detrás de las tarjetas",
     group: "base",
   },
-  { slot: "text", key: "catalog_color_text", label: "Texto", group: "base" },
+  {
+    slot: "text",
+    key: "catalog_color_text",
+    label: "Texto",
+    hint: "Párrafos y descripciones",
+    group: "base",
+  },
   {
     slot: "surface",
     key: "catalog_color_surface",
     label: "Fondo de tarjetas",
+    hint: "Tarjetas, cabecera, pie, buscador",
     group: "adv",
   },
   {
     slot: "muted",
     key: "catalog_color_muted",
     label: "Texto secundario",
+    hint: "Categorías, contadores, ubicación, subtítulos",
     group: "adv",
   },
   {
     slot: "heading",
     key: "catalog_color_heading",
     label: "Títulos",
+    hint: "Nombre de tienda, nombres y precios de producto",
     group: "adv",
   },
   {
     slot: "border",
     key: "catalog_color_border",
     label: "Bordes y divisores",
+    hint: "Bordes de tarjetas y divisores",
     group: "adv",
   },
   {
     slot: "accentSoft",
     key: "catalog_color_accent_soft",
-    label: "Tinte del acento",
+    label: "Tinte suave",
+    hint: "Badge «Nuevo» y fondo del hero sin imagen",
     group: "adv",
   },
 ];
@@ -290,97 +304,19 @@ export default function CatalogAppearance() {
           unos minutos en verse.
         </Text>
 
-        {/* Vista previa en vivo */}
+        {/* Vista previa en vivo — réplica del storefront real */}
         <Card level={1} padded={false} style={{ overflow: "hidden" }}>
-          <View
-            style={{
-              backgroundColor: t.canvas,
-              padding: spacing.lg,
-              gap: spacing.sm,
-            }}
-          >
-            <Text
-              weight="bold"
-              style={[
-                { fontSize: 20, color: t.ink },
-                previewFamily && { fontFamily: previewFamily },
-              ]}
-            >
-              {data?.company || "Mi Tienda"}
-            </Text>
-            <Text
-              style={[
-                { fontSize: 13, color: t.muted },
-                previewFamily && { fontFamily: previewFamily },
-              ]}
-            >
-              {form.catalog_tagline || "Tu catálogo, tu estilo."}
-            </Text>
-            <View
-              style={{
-                flexDirection: "row",
-                gap: spacing.sm,
-                marginTop: spacing.xs,
-              }}
-            >
-              <View
-                style={{
-                  backgroundColor: t.accent,
-                  paddingVertical: 8,
-                  paddingHorizontal: 16,
-                  borderRadius: radii.pill,
-                }}
-              >
-                <Text
-                  style={[
-                    { color: t.accentFg, fontSize: 13, fontWeight: "600" },
-                    previewFamily && { fontFamily: previewFamily },
-                  ]}
-                >
-                  Comprar
-                </Text>
-              </View>
-              <View
-                style={{
-                  backgroundColor: t.surface,
-                  borderColor: t.line,
-                  borderWidth: 1,
-                  paddingVertical: 8,
-                  paddingHorizontal: 16,
-                  borderRadius: radii.pill,
-                }}
-              >
-                <Text style={{ color: t.body, fontSize: 13 }}>Ver más</Text>
-              </View>
-            </View>
-
-            {/* mini-tarjeta: surface + títulos + texto secundario + borde */}
-            <View
-              style={{
-                marginTop: spacing.xs,
-                backgroundColor: t.surface,
-                borderColor: t.line,
-                borderWidth: 1,
-                borderRadius: radii.md,
-                padding: spacing.md,
-                gap: 2,
-              }}
-            >
-              <Text
-                weight="bold"
-                style={[
-                  { fontSize: 14, color: t.ink },
-                  previewFamily && { fontFamily: previewFamily },
-                ]}
-              >
-                Producto de ejemplo
-              </Text>
-              <Text style={{ fontSize: 12, color: t.muted }}>
-                Categoría · Ref. 001
-              </Text>
-              <Text style={{ fontSize: 13, color: t.body }}>$ 45.000</Text>
-            </View>
-          </View>
+          <StorefrontPreview
+            theme={t}
+            fontFamily={previewFamily}
+            storeName={data?.company || "Mi Tienda"}
+            municipality={data?.municipality}
+            tagline={
+              form.catalog_tagline || "Explora el catálogo y pide por WhatsApp."
+            }
+            announcement={form.catalog_announcement}
+            bannerUri={previewUri}
+          />
           {lowContrast ? (
             <View
               style={{
@@ -507,6 +443,12 @@ export default function CatalogAppearance() {
                 <View style={{ flex: 1 }}>
                   <Text>{row.label}</Text>
                   <Text variant="caption" muted>
+                    {row.hint}
+                  </Text>
+                  <Text
+                    variant="caption"
+                    style={{ color: colors.textFaint, marginTop: 1 }}
+                  >
                     {form[row.key]
                       ? form[row.key]
                       : `${eff[row.slot]} · de la paleta`}
@@ -528,6 +470,9 @@ export default function CatalogAppearance() {
         <Card level={0} style={{ gap: spacing.xs }}>
           <Text variant="small" weight="medium" muted>
             Tipografía
+          </Text>
+          <Text variant="caption" style={{ color: colors.textFaint }}>
+            Toda la letra del catálogo
           </Text>
           <Pressable
             onPress={() => editable && setFontSheet(true)}
@@ -554,9 +499,14 @@ export default function CatalogAppearance() {
 
         {/* Portada / banner */}
         <Card level={0} style={{ gap: spacing.md }}>
-          <Text variant="small" weight="medium" muted>
-            Imagen de portada (hero)
-          </Text>
+          <View style={{ gap: 2 }}>
+            <Text variant="small" weight="medium" muted>
+              Imagen de portada (hero)
+            </Text>
+            <Text variant="caption" style={{ color: colors.textFaint }}>
+              Fondo de la cabecera del catálogo
+            </Text>
+          </View>
           <View
             style={{
               height: 140,
