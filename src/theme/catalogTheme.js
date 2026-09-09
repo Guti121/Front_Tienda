@@ -118,7 +118,19 @@ export function isValidHex(v) {
 }
 
 // ---------------------------------------------------------------- resolución
-export function resolveCatalogTheme({ palette, accent, bg, text } = {}) {
+// Los overrides finos (surface/muted/ink/line/accentSoft) se usan tal cual si
+// parsean; si no, se derivan del trío base.
+export function resolveCatalogTheme({
+  palette,
+  accent,
+  bg,
+  text,
+  surface,
+  muted,
+  ink,
+  line,
+  accentSoft,
+} = {}) {
   const base = PALETTES[(palette || "").trim()] || PALETTES[""];
   const accentRGB = parseHex(accent) || parseHex(base.accent);
   const bgRGB = parseHex(bg) || parseHex(base.bg);
@@ -131,6 +143,11 @@ export function resolveCatalogTheme({ palette, accent, bg, text } = {}) {
       ? "#ffffff"
       : "#0f1115";
 
+  const pick = (v, derived) => {
+    const rgb = parseHex(v);
+    return rgb ? toHex(rgb) : derived;
+  };
+
   return {
     accent: toHex(accentRGB),
     accentHover: toHex(
@@ -139,22 +156,33 @@ export function resolveCatalogTheme({ palette, accent, bg, text } = {}) {
         : lighten(accentRGB, 0.1),
     ),
     accentFg,
-    accentSoft: toHex(mix(accentRGB, bgRGB, 0.88)),
+    accentSoft: pick(accentSoft, toHex(mix(accentRGB, bgRGB, 0.88))),
     canvas: toHex(bgRGB),
-    surface: toHex(bgIsDark ? mix(bgRGB, WHITE, 0.08) : WHITE),
+    surface: pick(surface, toHex(bgIsDark ? mix(bgRGB, WHITE, 0.08) : WHITE)),
     body: toHex(textRGB),
-    ink: toHex(bgIsDark ? lighten(textRGB, 0.08) : darken(textRGB, 0.15)),
-    muted: toHex(mix(textRGB, bgRGB, 0.45)),
-    line: toHex(mix(textRGB, bgRGB, 0.88)),
+    ink: pick(
+      ink,
+      toHex(bgIsDark ? lighten(textRGB, 0.08) : darken(textRGB, 0.15)),
+    ),
+    muted: pick(muted, toHex(mix(textRGB, bgRGB, 0.45))),
+    line: pick(line, toHex(mix(textRGB, bgRGB, 0.88))),
   };
 }
 
-/** Colores EFECTIVOS de los 3 slots (para pintar swatches / abrir la rueda). */
-export function effectiveColors({ palette, accent, bg, text } = {}) {
-  const base = PALETTES[(palette || "").trim()] || PALETTES[""];
+/** Color EFECTIVO de cada slot (para pintar el swatch y abrir la rueda con él).
+ *  accent/bg/text vienen del override o del trío base; el resto, del tema
+ *  resuelto (que ya aplica override-o-derivado). */
+export function effectiveColors(input = {}) {
+  const base = PALETTES[(input.palette || "").trim()] || PALETTES[""];
+  const t = resolveCatalogTheme(input);
   return {
-    accent: accent || base.accent,
-    bg: bg || base.bg,
-    text: text || base.text,
+    accent: input.accent || base.accent,
+    bg: input.bg || base.bg,
+    text: input.text || base.text,
+    surface: t.surface,
+    muted: t.muted,
+    heading: t.ink,
+    border: t.line,
+    accentSoft: t.accentSoft,
   };
 }

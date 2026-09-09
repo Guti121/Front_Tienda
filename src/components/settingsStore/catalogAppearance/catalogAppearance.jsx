@@ -61,10 +61,51 @@ const fontLabel = (key) =>
   "Inter (por defecto)";
 
 const COLOR_ROWS = [
-  { slot: "accent", key: "catalog_color_accent", label: "Botones y enlaces" },
-  { slot: "bg", key: "catalog_color_bg", label: "Fondo de página" },
-  { slot: "text", key: "catalog_color_text", label: "Texto" },
+  {
+    slot: "accent",
+    key: "catalog_color_accent",
+    label: "Botones y enlaces",
+    group: "base",
+  },
+  {
+    slot: "bg",
+    key: "catalog_color_bg",
+    label: "Fondo de página",
+    group: "base",
+  },
+  { slot: "text", key: "catalog_color_text", label: "Texto", group: "base" },
+  {
+    slot: "surface",
+    key: "catalog_color_surface",
+    label: "Fondo de tarjetas",
+    group: "adv",
+  },
+  {
+    slot: "muted",
+    key: "catalog_color_muted",
+    label: "Texto secundario",
+    group: "adv",
+  },
+  {
+    slot: "heading",
+    key: "catalog_color_heading",
+    label: "Títulos",
+    group: "adv",
+  },
+  {
+    slot: "border",
+    key: "catalog_color_border",
+    label: "Bordes y divisores",
+    group: "adv",
+  },
+  {
+    slot: "accentSoft",
+    key: "catalog_color_accent_soft",
+    label: "Tinte del acento",
+    group: "adv",
+  },
 ];
+const COLOR_KEYS = COLOR_ROWS.map((r) => r.key);
 
 const TAGLINE_MAX = 120;
 const ANNOUNCE_MAX = 140;
@@ -76,6 +117,11 @@ const EMPTY = {
   catalog_color_accent: "",
   catalog_color_bg: "",
   catalog_color_text: "",
+  catalog_color_surface: "",
+  catalog_color_muted: "",
+  catalog_color_heading: "",
+  catalog_color_border: "",
+  catalog_color_accent_soft: "",
 };
 
 const seedFrom = (data) =>
@@ -119,25 +165,28 @@ export default function CatalogAppearance() {
 
   const set = (patch) => setForm((p) => ({ ...p, ...patch }));
 
+  const themeInputFrom = (f) => ({
+    palette: f.catalog_palette,
+    accent: f.catalog_color_accent,
+    bg: f.catalog_color_bg,
+    text: f.catalog_color_text,
+    surface: f.catalog_color_surface,
+    muted: f.catalog_color_muted,
+    ink: f.catalog_color_heading,
+    line: f.catalog_color_border,
+    accentSoft: f.catalog_color_accent_soft,
+  });
+
   const applyPalette = (key) => {
     set({
       catalog_palette: key,
-      catalog_color_accent: "",
-      catalog_color_bg: "",
-      catalog_color_text: "",
+      ...Object.fromEntries(COLOR_KEYS.map((k) => [k, ""])),
     });
     toast.success("Colores de la paleta aplicados");
   };
 
   const openColor = (slot) => {
-    setDraftColor(
-      effectiveColors({
-        palette: form.catalog_palette,
-        accent: form.catalog_color_accent,
-        bg: form.catalog_color_bg,
-        text: form.catalog_color_text,
-      })[slot],
-    );
+    setDraftColor(effectiveColors(themeInputFrom(form))[slot]);
     setColorSlot(slot);
   };
 
@@ -219,12 +268,7 @@ export default function CatalogAppearance() {
   }
 
   const previewUri = banner?.uri || mediaUrl(data?.catalog_banner);
-  const themeInput = {
-    palette: form.catalog_palette,
-    accent: form.catalog_color_accent,
-    bg: form.catalog_color_bg,
-    text: form.catalog_color_text,
-  };
+  const themeInput = themeInputFrom(form);
   const t = resolveCatalogTheme(themeInput);
   const eff = effectiveColors(themeInput);
   const previewFamily = previewFontsReady
@@ -232,12 +276,11 @@ export default function CatalogAppearance() {
     : undefined;
   const lowContrast =
     contrastRatio(t.body, t.canvas) < 4.5 ||
-    contrastRatio(t.accent, t.accentFg) < 3;
-  const customColors = Boolean(
-    form.catalog_color_accent ||
-      form.catalog_color_bg ||
-      form.catalog_color_text,
-  );
+    contrastRatio(t.accent, t.accentFg) < 3 ||
+    contrastRatio(t.body, t.surface) < 4.5 ||
+    contrastRatio(t.ink, t.surface) < 3 ||
+    contrastRatio(t.muted, t.surface) < 3;
+  const customColors = COLOR_KEYS.some((k) => form[k]);
 
   return (
     <Screen scroll>
@@ -309,6 +352,33 @@ export default function CatalogAppearance() {
               >
                 <Text style={{ color: t.body, fontSize: 13 }}>Ver más</Text>
               </View>
+            </View>
+
+            {/* mini-tarjeta: surface + títulos + texto secundario + borde */}
+            <View
+              style={{
+                marginTop: spacing.xs,
+                backgroundColor: t.surface,
+                borderColor: t.line,
+                borderWidth: 1,
+                borderRadius: radii.md,
+                padding: spacing.md,
+                gap: 2,
+              }}
+            >
+              <Text
+                weight="bold"
+                style={[
+                  { fontSize: 14, color: t.ink },
+                  previewFamily && { fontFamily: previewFamily },
+                ]}
+              >
+                Producto de ejemplo
+              </Text>
+              <Text style={{ fontSize: 12, color: t.muted }}>
+                Categoría · Ref. 001
+              </Text>
+              <Text style={{ fontSize: 13, color: t.body }}>$ 45.000</Text>
             </View>
           </View>
           {lowContrast ? (
@@ -403,6 +473,16 @@ export default function CatalogAppearance() {
           {COLOR_ROWS.map((row, i) => (
             <View key={row.slot}>
               {i > 0 ? <Divider spacing={spacing.xs} /> : null}
+              {row.group === "adv" && COLOR_ROWS[i - 1]?.group === "base" ? (
+                <Text
+                  variant="caption"
+                  weight="medium"
+                  muted
+                  style={{ marginTop: spacing.sm, marginBottom: spacing.xs }}
+                >
+                  AVANZADO · vacío = se calcula solo
+                </Text>
+              ) : null}
               <View
                 style={{
                   flexDirection: "row",
@@ -677,7 +757,8 @@ export default function CatalogAppearance() {
             title="Usar este color"
             disabled={!draftColor || !isValidHex(draftColor)}
             onPress={() => {
-              set({ [`catalog_color_${colorSlot}`]: draftColor });
+              const row = COLOR_ROWS.find((r) => r.slot === colorSlot);
+              if (row) set({ [row.key]: draftColor });
               setColorSlot(null);
             }}
           />
