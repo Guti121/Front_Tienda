@@ -186,7 +186,7 @@ export default function DetailProduct({ id }) {
             <>
               <Divider />
               <Row
-                label="Valor por mayor"
+                label="Valor Coste"
                 value={pesosFormat(product.valor_mayor)}
               />
               <Row

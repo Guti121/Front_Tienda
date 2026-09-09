@@ -118,7 +118,7 @@ export default function DailyStockTaking() {
               value={pesosFormat(resumen?.total_ventas)}
             />
             <SummaryRow
-              label="Valor al por mayor"
+              label="Valor Coste"
               value={pesosFormat(resumen?.valor_al_por_mayor)}
             />
             <SummaryRow

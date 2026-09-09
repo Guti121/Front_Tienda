@@ -177,10 +177,10 @@ export function AddProductsColletion() {
   function validate() {
     if (!nombre.trim()) return "El nombre es obligatorio.";
     if (!detalles.trim()) return "Los detalles son obligatorios.";
-    if (valorMayor <= 0) return "El valor por mayor debe ser mayor que 0.";
+    if (valorMayor <= 0) return "El Valor Coste debe ser mayor que 0.";
     if (valor <= 0) return "El valor de venta debe ser mayor que 0.";
     if (valor < valorMayor)
-      return "El valor de venta no puede ser menor al valor por mayor.";
+      return "El valor de venta no puede ser menor al Valor Coste.";
     if (unidades <= 0) return "Las unidades deben ser mayores que 0.";
     if (!tipo) return "Selecciona un tipo de producto.";
     return null;
@@ -242,7 +242,7 @@ export function AddProductsColletion() {
           inputStyle={{ minHeight: 90, textAlignVertical: "top" }}
         />
         <TextField
-          label="Valor por mayor"
+          label="Valor Coste"
           value={valorMayorTxt}
           onChangeText={(t) => {
             setValorMayorTxt(formatToCOP(t));

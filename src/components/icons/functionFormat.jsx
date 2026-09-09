@@ -2,12 +2,12 @@ export const pesosFormat = (num) => {
   const formatCurrency = new Intl.NumberFormat("es-CO", {
     style: "currency",
     currency: "COP",
-    minimumFractionDigits: 2, // Asegura siempre mostrar dos decimales
+    minimumFractionDigits: 0, // El peso no tiene centavos: sin decimales.
+    maximumFractionDigits: 0,
   }).format(num);
 
   return formatCurrency;
 };
-
 
 // This function formart nums in changeText
 export const formatToCOP = (value) => {
@@ -19,7 +19,8 @@ export const formatToCOP = (value) => {
   return new Intl.NumberFormat("es-CO", {
     style: "currency",
     currency: "COP",
-    minimumFractionDigits:0,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(numericValue);
 };
 
@@ -29,4 +30,3 @@ export const cleanNumber = (value) => {
   const cleaned = value.replace(/[$\s,.]/g, ""); // Elimina `$`, espacios, puntos y comas
   return isNaN(parseInt(cleaned)) ? 0 : parseInt(cleaned);
 };
-

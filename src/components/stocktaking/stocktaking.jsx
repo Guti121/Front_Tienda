@@ -61,7 +61,7 @@ export default function StocktakingPage() {
               />
               <Divider />
               <Row
-                label="Valor por mayor"
+                label="Valor Coste"
                 value={pesosFormat(data?.total_precio_mayor)}
               />
               <Row
