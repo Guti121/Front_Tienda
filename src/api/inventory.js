@@ -10,9 +10,9 @@ const qs = (obj) => {
   return s ? `?${s}` : "";
 };
 
-// POST /inventario/productos/  → totales del stock activo.
+// GET /inventario/productos/  → totales del stock activo (disponible=True).
 export async function getStockTotals() {
-  const { data } = await api.post("inventario/productos/");
+  const { data } = await api.get("inventario/productos/");
   return data; // { total_unidades_disponibles, total_precio_mayor, total_precio_venta, total_costos_fijos }
 }
 
