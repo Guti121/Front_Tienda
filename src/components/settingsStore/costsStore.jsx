@@ -5,7 +5,7 @@ import { useSelector } from "react-redux";
 
 import { retrieveCosts, saveCosts, deleteCosts } from "../../api/store";
 import { ApiError } from "../../api/http";
-import { cleanNumber, formatToCOP } from "../icons/functionFormat";
+import { cleanNumber, formatToCOP, pesosFormat } from "../icons/functionFormat";
 import { useTheme } from "../../theme/ThemeProvider";
 import {
   Button,
@@ -46,7 +46,13 @@ export function CostsStore() {
   useEffect(() => {
     if (data) {
       setCostos(formatToCOP(String(data.costos_fijos ?? "")));
-      setMargen(String(data.margen_ganancia ?? ""));
+      // El margen es un %, se guarda con 1 decimal (30.0). En la UI se muestra
+      // sin el decimal muerto: 30.0 -> "30", 12.5 -> "12.5".
+      setMargen(
+        data.margen_ganancia == null
+          ? ""
+          : String(Number(data.margen_ganancia)),
+      );
       setPromedio(String(data.promedio_productos_vendidos ?? ""));
       setEditable(false);
     } else if (notConfigured) {
@@ -87,6 +93,15 @@ export function CostsStore() {
     },
   });
 
+  // Vista previa en vivo: cuánto suma el costo fijo a cada unidad
+  // (costos_fijos / promedio). Solo si ambos valores tienen sentido.
+  const costosNum = cleanNumber(costos);
+  const promedioNum = Number(promedio);
+  const costoFijoUnidad =
+    costosNum > 0 && promedioNum > 0
+      ? Math.round(costosNum / promedioNum)
+      : null;
+
   if (isLoading) return <Loader label="Cargando…" />;
   if (isError && !notConfigured) {
     return (
@@ -115,6 +130,10 @@ export function CostsStore() {
           >
             No asignes valores al azar.
           </Text>
+          <Text muted variant="small" style={{ marginTop: spacing.xs }}>
+            Es una sola configuración por tienda. «Guardar» actualiza la que ya
+            tienes; no hace falta borrarla para cambiar un valor.
+          </Text>
         </Card>
 
         <Card level={0} style={{ gap: spacing.md }}>
@@ -139,6 +158,11 @@ export function CostsStore() {
             editable={editable}
             keyboardType="numeric"
           />
+          {costoFijoUnidad != null ? (
+            <Text muted variant="small">
+              Costo fijo por unidad ≈ {pesosFormat(costoFijoUnidad)}
+            </Text>
+          ) : null}
         </Card>
 
         {isCreator ? (
