@@ -14,7 +14,6 @@ import { cleanNumber, formatToCOP, pesosFormat } from "../icons/functionFormat";
 import ImagePickerWeb from "./componentWebimage";
 import { useTheme } from "../../theme/ThemeProvider";
 import {
-  Badge,
   Button,
   Card,
   Icon,
@@ -119,16 +118,16 @@ export function AddProductsColletion() {
   const calc = useMutation({
     mutationFn: () => suggestRetailPrice({ valorMayor, margen: percent }),
     onSuccess: () => setAddCF(false),
-    onError: (err) =>
-      toast.error(
-        err instanceof ApiError
-          ? err.message
-          : "No se pudo calcular el precio.",
-      ),
+    // El error se muestra en la tarjeta y en el modal (no hace falta toast, que
+    // además molestaría al dispararse solo al confirmar).
   });
   const suggested = calc.data;
-  const valorCostosFijos =
-    addCF && suggested ? round2(suggested.ValorXmayor_CF - valorMayor) : 0;
+  // Costo fijo por unidad = (valor_mayor + costo_fijo_u) - valor_mayor.
+  const cfUnidad = suggested
+    ? Math.max(0, round2(suggested.ValorXmayor_CF - valorMayor))
+    : 0;
+  const valorCostosFijos = addCF ? cfUnidad : 0;
+  const costeConCF = valorMayor + valorCostosFijos;
 
   const create = useMutation({
     mutationFn: (formData) => createProduct(formData),
@@ -218,6 +217,9 @@ export function AddProductsColletion() {
       return;
     }
     setFormError(null);
+    // Para poder preguntar por los costos fijos en el modal, aseguramos tener
+    // el dato (costo fijo por unidad) antes de abrirlo.
+    if (!suggested && !calc.isPending && valorMayor > 0) calc.mutate();
     setConfirmOpen(true);
   }
 
@@ -313,17 +315,10 @@ export function AddProductsColletion() {
                 Valor con CF: {pesosFormat(suggested.ValorXmayor_CF)} ·
                 Ganancia: {Math.round(suggested.Margen * 100)}%
               </Text>
-              <Toggle
-                label="Agregar costos fijos al producto"
-                value={addCF}
-                onValueChange={setAddCF}
-              />
-              {addCF ? (
-                <Badge
-                  label={`CF: ${pesosFormat(valorCostosFijos)}`}
-                  tone="brand"
-                />
-              ) : null}
+              <Text variant="caption" muted>
+                Antes de crear el producto se te preguntará si quieres sumar los
+                costos fijos ({pesosFormat(cfUnidad)}/u.) al Valor Coste.
+              </Text>
             </View>
           ) : null}
         </Card>
@@ -402,11 +397,63 @@ export function AddProductsColletion() {
       >
         <Text muted>{nombre}</Text>
         <Text variant="small" muted>
-          {tipo?.tipo_producto} · {unidades} u. · venta {pesosFormat(valor)}
+          {tipo?.tipo_producto} · {unidades} u.
         </Text>
+
+        {/* Costos fijos */}
+        {calc.isPending ? (
+          <Text variant="small" muted>
+            Calculando costos fijos…
+          </Text>
+        ) : calc.isError ? (
+          <Text variant="small" muted>
+            No se pudieron obtener tus costos fijos; se creará sin sumarlos.{" "}
+            <Link
+              href="/myStoreSettings/costsMyStoreDrawer"
+              style={{ color: colors.primary }}
+            >
+              Configurar
+            </Link>
+          </Text>
+        ) : suggested ? (
+          <View style={{ gap: spacing.xs }}>
+            <Toggle
+              label="Sumar los costos fijos al Valor Coste"
+              value={addCF}
+              onValueChange={setAddCF}
+            />
+            <Text variant="caption" muted>
+              Costo fijo por unidad: {pesosFormat(cfUnidad)}
+            </Text>
+          </View>
+        ) : null}
+
+        {/* Importes finales */}
+        <View style={{ gap: 2 }}>
+          <Text variant="small">
+            Valor Coste:{" "}
+            <Text variant="small" weight="bold">
+              {pesosFormat(costeConCF)}
+            </Text>
+            {addCF ? (
+              <Text variant="small" muted>
+                {"  "}({pesosFormat(valorMayor)} +{" "}
+                {pesosFormat(valorCostosFijos)} CF)
+              </Text>
+            ) : null}
+          </Text>
+          <Text variant="small">
+            Valor de venta:{" "}
+            <Text variant="small" weight="bold">
+              {pesosFormat(valor)}
+            </Text>
+          </Text>
+        </View>
+
         <Button
           title="Crear producto"
           loading={create.isPending}
+          disabled={calc.isPending}
           onPress={() => create.mutate(buildFormData())}
         />
         <Button
