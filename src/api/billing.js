@@ -9,7 +9,8 @@ export async function createInvoice(detalles) {
   return data;
 }
 
-// POST /facturas/codigo_de_barras_text/  (móvil: escáner EAN-13)
+// POST /facturas/codigo_de_barras_text/  (código ya decodificado: escáner nativo
+// de expo-camera o @zxing/browser en web)
 export async function lookupBarcodeText(codigoBarras) {
   const { data } = await api.post("facturas/codigo_de_barras_text/", {
     codigoBarras,
@@ -17,7 +18,8 @@ export async function lookupBarcodeText(codigoBarras) {
   return data;
 }
 
-// POST /facturas/codigo_de_barras/  (web: foto del producto, multipart)
+// POST /facturas/codigo_de_barras/  (fallback web: foto del producto, multipart;
+// decodifica el backend con pyzbar)
 export async function lookupBarcodeImage(formData) {
   const { data } = await postForm("facturas/codigo_de_barras/", formData);
   return data;

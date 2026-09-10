@@ -5,6 +5,7 @@ import * as ImagePicker from "expo-image-picker";
 
 import { lookupBarcodeText, lookupBarcodeImage } from "../../src/api/billing";
 import { addToCart } from "../../src/hooks/useCart";
+import WebBarcodeScanner from "../../src/components/billing/WebBarcodeScanner";
 import { isWeb } from "../../src/components/token/localstorage";
 import { pesosFormat } from "../../src/components/icons/functionFormat";
 import { useTheme } from "../../src/theme/ThemeProvider";
@@ -30,6 +31,7 @@ export default function ModalBarCode() {
   const [busy, setBusy] = useState(false);
   const [found, setFound] = useState(null); // producto encontrado -> Sheet
   const [qty, setQty] = useState(1);
+  const [webCamFailed, setWebCamFailed] = useState(false); // web: cae al fallback de foto
 
   const lookupText = async (value) => {
     if (!value) return;
@@ -87,6 +89,11 @@ export default function ModalBarCode() {
     }
   };
 
+  const onScan = (data) => {
+    setScanned(true);
+    lookupText(data);
+  };
+
   const addFound = async () => {
     await addToCart(
       {
@@ -121,13 +128,29 @@ export default function ModalBarCode() {
         />
 
         {isWeb ? (
-          <Button
-            title="Tomar / subir foto del producto"
-            variant="secondary"
-            loading={busy}
-            left={<Icon name="camera-outline" size={18} color={colors.text} />}
-            onPress={lookupPhoto}
-          />
+          webCamFailed ? (
+            <Card level={0} style={{ gap: spacing.sm }}>
+              <Text muted>
+                No pudimos abrir la cámara. Toma una foto del producto o escribe
+                el código.
+              </Text>
+              <Button
+                title="Tomar / subir foto del producto"
+                variant="secondary"
+                loading={busy}
+                left={
+                  <Icon name="camera-outline" size={18} color={colors.text} />
+                }
+                onPress={lookupPhoto}
+              />
+            </Card>
+          ) : (
+            <WebBarcodeScanner
+              onScan={onScan}
+              onUnavailable={() => setWebCamFailed(true)}
+              paused={scanned || busy || !!found}
+            />
+          )
         ) : !permission?.granted ? (
           <Card level={0} style={{ gap: spacing.sm }}>
             <Text muted>Necesitamos la cámara para escanear el código.</Text>
@@ -148,18 +171,13 @@ export default function ModalBarCode() {
                 barcodeTypes: ["ean13", "ean8", "upc_a"],
               }}
               onBarcodeScanned={
-                scanned || busy
-                  ? undefined
-                  : ({ data }) => {
-                      setScanned(true);
-                      lookupText(data);
-                    }
+                scanned || busy ? undefined : ({ data }) => onScan(data)
               }
             />
           </View>
         )}
 
-        {scanned && !isWeb ? (
+        {scanned && !(isWeb && webCamFailed) ? (
           <Button
             title="Escanear de nuevo"
             variant="ghost"
