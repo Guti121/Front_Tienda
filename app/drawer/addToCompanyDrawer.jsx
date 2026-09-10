@@ -4,12 +4,18 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 
 import { validateAllyQr } from "../../src/api/store";
 import { deleteTokenStorage } from "../../src/components/token/token";
-import { useUserCAWAuthRedirect } from "../../src/redux/viewsPermissions";
+import { useRequireRole } from "../../src/redux/viewsPermissions";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { Button, Card, Screen, Text, useToast } from "../../src/ui";
 
+// Esta pantalla es para un usuario que TODAVÍA no pertenece a una tienda: escanea
+// el QR del dueño para vincularse. El backend (LeerQRView) rechaza a quien ya
+// tiene compañía, así que aquí solo entra 'cliente'. Antes usaba el guard
+// creator/admin/worker y mandaba al recién registrado a /badRequest.
+const SOLO_CLIENTE = ["cliente"];
+
 export default function AddToCompanyDrawer() {
-  useUserCAWAuthRedirect();
+  useRequireRole(SOLO_CLIENTE);
   const { spacing, radii } = useTheme();
   const toast = useToast();
   const [permission, requestPermission] = useCameraPermissions();
