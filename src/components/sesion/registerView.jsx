@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { View } from "react-native";
+import { router } from "expo-router";
 
-import { handleRegister } from "./axiosRequest";
+import { handleRegister, handleLogin } from "./axiosRequest";
 import { useTheme } from "../../theme/ThemeProvider";
 import { Button, TextField, Text, Icon, useToast } from "../../ui";
 
@@ -58,7 +59,15 @@ export default function FormRegister() {
       });
       if (res.status === 201) {
         setOk(true);
-        toast.success("¡Cuenta creada! Ya puedes iniciar sesión.");
+        // Auto-login con las mismas credenciales para poder llevar al usuario
+        // directo a elegir qué hacer (crear tienda / unirse por QR), en vez de
+        // mandarlo a loguearse a mano.
+        try {
+          await handleLogin(form.email, form.password);
+          router.replace("/onboarding");
+        } catch {
+          toast.success("¡Cuenta creada! Ya puedes iniciar sesión.");
+        }
       }
     } catch (err) {
       const fields = err?.fields || err?.response?.data || {};

@@ -65,6 +65,12 @@ const ACTIONS = [
     icon: "qrcode-scan",
     roles: ["cliente"],
   },
+  {
+    route: "createCompanyDrawer",
+    label: "Crear mi tienda",
+    icon: "store-plus-outline",
+    roles: ["cliente"],
+  },
 ];
 
 export default function Home() {

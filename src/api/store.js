@@ -7,6 +7,13 @@ export async function retrieveCompany() {
   return data;
 }
 
+// `fields`: objeto plano, o FormData si se sube logo. El backend promueve al
+// usuario (cliente -> creator) y lo vincula a la nueva compañía.
+export async function createCompany(fields) {
+  const { data } = await api.post("store/createCompany/", fields);
+  return data;
+}
+
 // `fields` puede ser objeto plano o FormData (cuando hay logo nuevo).
 export async function updateCompany(fields) {
   const { data } = await api.patch("store/updateCompany/", fields);

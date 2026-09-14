@@ -64,6 +64,11 @@ export const NAV = {
     icon: "qrcode-scan",
     roles: ["cliente"],
   },
+  createCompanyDrawer: {
+    title: "Crear mi tienda",
+    icon: "store-plus-outline",
+    roles: ["cliente"],
+  },
 };
 
 export const allowedFor = (role) =>
