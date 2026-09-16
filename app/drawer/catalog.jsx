@@ -1,6 +1,8 @@
 import { Linking, Share, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
+import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
+import { useSelector } from "react-redux";
 
 import { catalogUrl } from "../../src/api/config";
 import { retrieveCompany } from "../../src/api/store";
@@ -17,12 +19,16 @@ import {
 } from "../../src/ui";
 
 // El catálogo público ya NO se renderiza dentro de la app: vive en su propia
-// mini-app web (repo `catalog-web`). Esta pantalla solo comparte el enlace
-// público de la tienda.
+// mini-app web (repo `catalog-web`). Esta pantalla comparte el enlace público
+// de la tienda y, para quien puede administrarla, da acceso directo a
+// personalizar su apariencia (antes solo estaba en "Mi tienda").
 export default function CatalogMyStoreDrawer() {
   useUserCAWAuthRedirect();
   const { colors, spacing } = useTheme();
   const toast = useToast();
+  const user = useSelector((state) => state.user.user);
+  const canCustomize =
+    user?.typeUser === "creator" || user?.typeUser === "admin";
 
   const { data, isLoading } = useQuery({
     queryKey: ["company"],
@@ -104,6 +110,22 @@ export default function CatalogMyStoreDrawer() {
                   <Icon name="share-variant" size={18} color={colors.text} />
                 }
               />
+              {canCustomize ? (
+                <Button
+                  title="Personalizar catálogo"
+                  variant="secondary"
+                  onPress={() =>
+                    router.push("/myStoreSettings/catalogAppearanceDrawer")
+                  }
+                  left={
+                    <Icon
+                      name="palette-outline"
+                      size={18}
+                      color={colors.text}
+                    />
+                  }
+                />
+              ) : null}
             </View>
           </>
         ) : (

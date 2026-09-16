@@ -89,6 +89,7 @@ export default function DrawerLayout() {
   return (
     <Tabs
       screenOptions={{
+        headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textFaint,
         tabBarStyle: {
@@ -99,14 +100,6 @@ export default function DrawerLayout() {
           paddingTop: 6,
         },
         tabBarLabelStyle: { fontSize: 11 },
-        headerStyle: {
-          backgroundColor: colors.surface,
-          borderBottomColor: colors.border,
-          borderBottomWidth: 1,
-        },
-        headerTitleStyle: { color: colors.text },
-        headerTintColor: colors.text,
-        headerShadowVisible: false,
       }}
     >
       {Object.entries(NAV).map(([name, cfg]) => {

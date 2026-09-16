@@ -6,25 +6,17 @@ import {
   StyleSheet,
   Image,
   Platform,
-  Alert,
 } from "react-native";
 
-import { Icon } from "../../ui";
+import { Icon, useToast } from "../../ui";
 
 export default function ImagePickerWeb({ images, setImages }) {
   const inputRef = useRef(null);
   const [isHovered, setIsHovered] = useState(false);
+  const toast = useToast();
 
   const MAX_IMAGES = 5;
   const MAX_SIZE_MB = 10;
-
-  const showMessage = (title, message) => {
-    if (Platform.OS === "web") {
-      alert(message);
-    } else {
-      Alert.alert(title, message);
-    }
-  };
 
   const handlePick = (e) => {
     const files = Array.from(e.target.files || []);
@@ -33,10 +25,7 @@ export default function ImagePickerWeb({ images, setImages }) {
 
     // Validate max images
     if (images.length + files.length > MAX_IMAGES) {
-      showMessage(
-        "Límite alcanzado",
-        `Solo puedes subir un máximo de ${MAX_IMAGES} imágenes.`,
-      );
+      toast.error(`Solo puedes subir un máximo de ${MAX_IMAGES} imágenes.`);
 
       if (inputRef.current) {
         inputRef.current.value = "";
@@ -65,9 +54,8 @@ export default function ImagePickerWeb({ images, setImages }) {
 
     // Show rejected files
     if (rejectedFiles.length > 0) {
-      showMessage(
-        "Algunos archivos fueron rechazados",
-        rejectedFiles.join("\n"),
+      toast.error(
+        `Algunos archivos fueron rechazados: ${rejectedFiles.join(", ")}`,
       );
     }
 

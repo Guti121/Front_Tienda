@@ -1,5 +1,6 @@
+import { useCallback } from "react";
 import { View } from "react-native";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 
 import { getStockTotals } from "../../api/inventory";
@@ -25,10 +26,19 @@ function Row({ label, value }) {
 
 export default function StocktakingPage() {
   const { colors, spacing } = useTheme();
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["inventory", "stockTotals"],
     queryFn: getStockTotals,
   });
+
+  // El tab queda montado al navegar a otra pantalla (no se desmonta), así que
+  // React Query no vuelve a pedir los datos solo por volver a este tab. Se
+  // fuerza el refetch al enfocar, igual que hace useCart con el carrito.
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
 
   return (
     <Screen scroll>
