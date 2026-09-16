@@ -23,12 +23,16 @@ import { pesosFormat } from "../icons/functionFormat";
 
 function facturaHtml(f, id) {
   const rows = (f.detalles ?? [])
-    .map(
-      (it, i) =>
-        `<tr><td>${i + 1}</td><td>${it.nombre_producto}</td><td>${it.cantidad}</td>` +
-        `<td>${pesosFormat(it.valor_und)}</td><td>${it.subtotal_cop}</td></tr>`,
-    )
+    .map((it, i) => {
+      const pct = Number(it.descuento_porcentaje || 0);
+      const cantidad = pct > 0 ? `${it.cantidad} (-${pct}%)` : it.cantidad;
+      return (
+        `<tr><td>${i + 1}</td><td>${it.nombre_producto}</td><td>${cantidad}</td>` +
+        `<td>${pesosFormat(it.valor_und)}</td><td>${it.subtotal_cop}</td></tr>`
+      );
+    })
     .join("");
+  const descuentoGeneral = Number(f.descuento_porcentaje || 0);
   return `<html><body style="font-family:Arial,sans-serif">
     <h2 style="text-align:center;text-transform:uppercase">${f.tienda_nombre ?? ""}</h2>
     <h3 style="text-align:center">Factura #${id}</h3>
@@ -37,6 +41,8 @@ function facturaHtml(f, id) {
       <thead><tr><th>#</th><th>Producto</th><th>Cantidad</th><th>Valor unitario</th><th>Subtotal</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
+    <p style="text-align:right">Subtotal: ${f.subtotal_cop ?? ""}</p>
+    ${descuentoGeneral > 0 ? `<p style="text-align:right">Descuento general: -${descuentoGeneral}%</p>` : ""}
     <h3 style="text-align:right">Total: ${f.total_cop ?? ""}</h3>
   </body></html>`;
 }
@@ -117,30 +123,71 @@ export function BillGenerateDetail({ id }) {
         </Card>
 
         <Card level={0} padded={false}>
-          {(data.detalles ?? []).map((it, i) => (
-            <View key={it.id ?? i}>
-              {i > 0 ? <Divider /> : null}
-              <View style={{ padding: spacing.md, gap: spacing.xxs }}>
-                <Text weight="medium">{it.nombre_producto}</Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <Text variant="small" muted>
-                    {it.cantidad} × {pesosFormat(it.valor_und)}
-                  </Text>
-                  <Text variant="small" weight="bold">
-                    {it.subtotal_cop}
-                  </Text>
+          {(data.detalles ?? []).map((it, i) => {
+            const pct = Number(it.descuento_porcentaje || 0);
+            return (
+              <View key={it.id ?? i}>
+                {i > 0 ? <Divider /> : null}
+                <View style={{ padding: spacing.md, gap: spacing.xxs }}>
+                  <Text weight="medium">{it.nombre_producto}</Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: spacing.xs,
+                      }}
+                    >
+                      <Text variant="small" muted>
+                        {it.cantidad} × {pesosFormat(it.valor_und)}
+                      </Text>
+                      {pct > 0 ? (
+                        <Text variant="small" color="danger">
+                          -{pct}%
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Text variant="small" weight="bold">
+                      {it.subtotal_cop}
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
         </Card>
 
         <Card level={1}>
+          {Number(data.descuento_porcentaje || 0) > 0 ? (
+            <>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                }}
+              >
+                <Text muted>Subtotal</Text>
+                <Text>{data.subtotal_cop}</Text>
+              </View>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                }}
+              >
+                <Text muted>Descuento general</Text>
+                <Text color="danger">
+                  -{Number(data.descuento_porcentaje)}%
+                </Text>
+              </View>
+              <Divider />
+            </>
+          ) : null}
           <View
             style={{ flexDirection: "row", justifyContent: "space-between" }}
           >

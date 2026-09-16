@@ -64,6 +64,7 @@ export default function Bill() {
         producto: selected.id,
         nombrePro: selected.nombre,
         valorPro: selected.valor,
+        descuentoPct: Number(selected.descuento_porcentaje || 0),
       },
       qty,
     );
@@ -74,6 +75,7 @@ export default function Bill() {
   const renderItem = ({ item }) => {
     const uri = mediaUrl(item?.imagen_principal) || FALLBACK_IMG;
     const sinStock = !item.unidades_disponibles;
+    const descuentoPct = Number(item.descuento_porcentaje || 0);
     return (
       <Pressable
         onPress={() => openProduct(item)}
@@ -81,17 +83,39 @@ export default function Bill() {
         style={{ width: "48%", opacity: sinStock ? 0.5 : 1 }}
       >
         <Card level={1} padded={false} style={{ overflow: "hidden" }}>
-          <Image
-            source={{ uri }}
-            style={{ width: "100%", height: 140, resizeMode: "cover" }}
-          />
+          <View>
+            <Image
+              source={{ uri }}
+              style={{ width: "100%", height: 140, resizeMode: "cover" }}
+            />
+            {descuentoPct > 0 ? (
+              <View style={{ position: "absolute", top: 6, left: 6 }}>
+                <Badge label={`-${descuentoPct}%`} tone="danger" />
+              </View>
+            ) : null}
+          </View>
           <View style={{ padding: spacing.md, gap: spacing.xs }}>
             <Text weight="medium" numberOfLines={1}>
               {item.nombre}
             </Text>
-            <Text weight="bold" color="primary">
-              {pesosFormat(item.valor)}
-            </Text>
+            {descuentoPct > 0 ? (
+              <>
+                <Text
+                  variant="small"
+                  muted
+                  style={{ textDecorationLine: "line-through" }}
+                >
+                  {pesosFormat(item.valor)}
+                </Text>
+                <Text weight="bold" color="primary">
+                  {pesosFormat(item.valor_con_descuento)}
+                </Text>
+              </>
+            ) : (
+              <Text weight="bold" color="primary">
+                {pesosFormat(item.valor)}
+              </Text>
+            )}
             <View
               style={{ flexDirection: "row", justifyContent: "space-between" }}
             >
@@ -217,7 +241,25 @@ export default function Bill() {
               style={{ flexDirection: "row", justifyContent: "space-between" }}
             >
               <Text muted>Precio unitario</Text>
-              <Text weight="bold">{pesosFormat(selected.valor)}</Text>
+              {Number(selected.descuento_porcentaje || 0) > 0 ? (
+                <View style={{ alignItems: "flex-end" }}>
+                  <Text
+                    variant="small"
+                    muted
+                    style={{ textDecorationLine: "line-through" }}
+                  >
+                    {pesosFormat(selected.valor)}
+                  </Text>
+                  <Text weight="bold">
+                    {pesosFormat(selected.valor_con_descuento)}{" "}
+                    <Text variant="caption" color="danger">
+                      -{Number(selected.descuento_porcentaje)}%
+                    </Text>
+                  </Text>
+                </View>
+              ) : (
+                <Text weight="bold">{pesosFormat(selected.valor)}</Text>
+              )}
             </View>
             <View
               style={{
@@ -238,7 +280,13 @@ export default function Bill() {
             >
               <Text muted>Subtotal</Text>
               <Text weight="bold" color="primary">
-                {pesosFormat(Number(selected.valor) * qty)}
+                {pesosFormat(
+                  Number(
+                    selected.descuento_porcentaje > 0
+                      ? selected.valor_con_descuento
+                      : selected.valor,
+                  ) * qty,
+                )}
               </Text>
             </View>
             <Button title="Agregar al carrito" onPress={confirmAdd} />

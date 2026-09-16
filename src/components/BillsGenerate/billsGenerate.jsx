@@ -6,7 +6,15 @@ import { useQuery } from "@tanstack/react-query";
 import { listInvoices } from "../../api/billing";
 import { ModalCalendar } from "../themeStyles/modalsCalendar";
 import { useTheme } from "../../theme/ThemeProvider";
-import { Card, EmptyState, Icon, Loader, Text, TextField } from "../../ui";
+import {
+  Badge,
+  Card,
+  EmptyState,
+  Icon,
+  Loader,
+  Text,
+  TextField,
+} from "../../ui";
 import { pesosFormat } from "../icons/functionFormat";
 
 const today = () => new Date().toISOString().split("T")[0];
@@ -159,6 +167,12 @@ export default function BillsGenerate() {
                         gap: spacing.sm,
                       }}
                     >
+                      {Number(item.descuento_porcentaje || 0) > 0 ? (
+                        <Badge
+                          label={`-${Number(item.descuento_porcentaje)}%`}
+                          tone="danger"
+                        />
+                      ) : null}
                       <Text weight="bold" color="primary">
                         {item.total_cop}
                       </Text>

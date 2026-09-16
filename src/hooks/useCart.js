@@ -1,6 +1,10 @@
 // Carrito de facturación. Estado en el storage local bajo la clave "arrayCar"
 // (misma clave y forma de item que antes, para no romper modalBarCode.jsx):
-//   { producto: <id>, nombrePro: <string>, cantidad: <n>, valorPro: <number> }
+//   { producto: <id>, nombrePro: <string>, cantidad: <n>, valorPro: <number>,
+//     descuentoPct?: <number> }
+// `descuentoPct` es el % de promo del producto al momento de agregarlo al
+// carrito: solo sirve de preview en ModalCar, el backend vuelve a resolver la
+// promo vigente real al facturar (nunca se manda en el POST).
 import { useCallback, useEffect, useState } from "react";
 import { useFocusEffect } from "expo-router";
 
@@ -24,7 +28,7 @@ export async function writeCart(items) {
 
 // Agrega (o suma cantidad si el producto ya está en el carrito).
 export async function addToCart(
-  { producto, nombrePro, valorPro },
+  { producto, nombrePro, valorPro, descuentoPct = 0 },
   cantidad = 1,
 ) {
   const items = await readCart();
@@ -32,7 +36,7 @@ export async function addToCart(
   if (i >= 0) {
     items[i] = { ...items[i], cantidad: items[i].cantidad + cantidad };
   } else {
-    items.push({ producto, nombrePro, valorPro, cantidad });
+    items.push({ producto, nombrePro, valorPro, descuentoPct, cantidad });
   }
   await writeCart(items);
   return items;
@@ -41,8 +45,14 @@ export async function addToCart(
 export const cartCount = (items) =>
   items.reduce((acc, it) => acc + it.cantidad, 0);
 
+// Preview con el % de promo capturado al agregar (no incluye overrides ni el
+// descuento general de la venta: esos solo existen en el estado de ModalCar).
 export const cartTotal = (items) =>
-  items.reduce((acc, it) => acc + it.cantidad * Number(it.valorPro || 0), 0);
+  items.reduce((acc, it) => {
+    const pct = Number(it.descuentoPct || 0);
+    const precio = Number(it.valorPro || 0) * (1 - pct / 100);
+    return acc + it.cantidad * precio;
+  }, 0);
 
 export function useCart() {
   const [items, setItems] = useState([]);

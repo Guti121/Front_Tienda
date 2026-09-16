@@ -62,6 +62,7 @@ export default function ProductView() {
   const renderItem = ({ item }) => {
     const uri = mediaUrl(item?.imagen_principal) || FALLBACK_IMG;
     const agotado = !item.unidades_disponibles;
+    const descuentoPct = Number(item.descuento_porcentaje || 0);
     return (
       <Pressable
         onPress={() =>
@@ -84,12 +85,38 @@ export default function ProductView() {
               }}
             />
             <View style={{ flex: 1, gap: spacing.xs }}>
-              <Text weight="medium" numberOfLines={1}>
-                {item.nombre}
-              </Text>
-              <Text weight="bold" color="primary">
-                {pesosFormat(item.valor)}
-              </Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: spacing.xs,
+                }}
+              >
+                <Text weight="medium" numberOfLines={1} style={{ flex: 1 }}>
+                  {item.nombre}
+                </Text>
+                {descuentoPct > 0 ? (
+                  <Badge label={`-${descuentoPct}%`} tone="danger" />
+                ) : null}
+              </View>
+              {descuentoPct > 0 ? (
+                <>
+                  <Text
+                    variant="small"
+                    muted
+                    style={{ textDecorationLine: "line-through" }}
+                  >
+                    {pesosFormat(item.valor)}
+                  </Text>
+                  <Text weight="bold" color="primary">
+                    {pesosFormat(item.valor_con_descuento)}
+                  </Text>
+                </>
+              ) : (
+                <Text weight="bold" color="primary">
+                  {pesosFormat(item.valor)}
+                </Text>
+              )}
               <View
                 style={{
                   flexDirection: "row",

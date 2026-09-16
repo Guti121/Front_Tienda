@@ -3,9 +3,12 @@
 import { api, postForm } from "./http";
 
 // POST /facturas/create/  → { mensaje, factura_id, Factura }
-// `detalles`: [{ producto: <id>, cantidad: <n> }]
-export async function createInvoice(detalles) {
-  const { data } = await api.post("facturas/create/", { detalles });
+// `detalles`: [{ producto: <id>, cantidad: <n>, descuento_porcentaje?: <n> }]
+// `descuentoPorcentaje`: % general opcional sobre el total de la venta.
+export async function createInvoice(detalles, descuentoPorcentaje) {
+  const body = { detalles };
+  if (descuentoPorcentaje) body.descuento_porcentaje = descuentoPorcentaje;
+  const { data } = await api.post("facturas/create/", body);
   return data;
 }
 
