@@ -29,7 +29,7 @@ export default function Login() {
       >
         <View style={{ alignItems: "center", gap: spacing.xs }}>
           <Image
-            source={require("../assets/logo.jpg")}
+            source={require("../assets/logo.png")}
             style={{ width: 64, height: 64, borderRadius: radii.lg }}
           />
           <Text variant="display" weight="bold">
