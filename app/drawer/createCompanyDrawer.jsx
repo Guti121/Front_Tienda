@@ -85,14 +85,14 @@ export default function CreateCompanyDrawer() {
         <Card level={1}>
           <Text weight="bold">Crear mi tienda</Text>
           <Text muted variant="small" style={{ marginTop: spacing.xs }}>
-            Con esto pasás a ser el dueño de tu propia tienda: catálogo,
+            Con esto pasas a ser el dueño de tu propia tienda: catálogo,
             facturación e inventario.
           </Text>
         </Card>
 
         <Card level={0} style={{ alignItems: "center", gap: spacing.sm }}>
           <Text muted variant="small">
-            Logo (opcional, lo podés subir después)
+            Logo (opcional, lo puedes subir después)
           </Text>
           <ImagePickerWeb images={images} setImages={setImages} />
         </Card>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { View } from "react-native";
+import { useSelector } from "react-redux";
 import { router } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Print from "expo-print";
@@ -52,6 +53,9 @@ export function BillGenerateDetail({ id }) {
   const toast = useToast();
   const queryClient = useQueryClient();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // El backend solo deja eliminar facturas al propietario y al administrador.
+  const tipo = useSelector((state) => state.user.user?.typeUser);
+  const puedeEliminar = tipo === "creator" || tipo === "admin";
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["invoice", id],
@@ -199,22 +203,24 @@ export function BillGenerateDetail({ id }) {
         </Card>
 
         <View style={{ flexDirection: "row", gap: spacing.md }}>
-          <Button
-            title="Eliminar"
-            variant="danger"
-            style={{ flex: 1 }}
-            left={
-              <Icon
-                name="trash-can-outline"
-                size={18}
-                color={colors.textOnBrand}
-              />
-            }
-            onPress={() => setConfirmDelete(true)}
-          />
+          {puedeEliminar ? (
+            <Button
+              title="Eliminar"
+              variant="danger"
+              style={{ flex: 1 }}
+              left={
+                <Icon
+                  name="trash-can-outline"
+                  size={18}
+                  color={colors.textOnBrand}
+                />
+              }
+              onPress={() => setConfirmDelete(true)}
+            />
+          ) : null}
           <Button
             title="Imprimir / compartir"
-            style={{ flex: 2 }}
+            style={{ flex: puedeEliminar ? 2 : 1 }}
             left={
               <Icon
                 name="printer-outline"

@@ -33,7 +33,7 @@ export default function Login() {
             style={{ width: 64, height: 64, borderRadius: radii.lg }}
           />
           <Text variant="display" weight="bold">
-            Mi Stock App
+            Mi Catálogo
           </Text>
           <Text variant="small" muted>
             Gestiona tu tienda

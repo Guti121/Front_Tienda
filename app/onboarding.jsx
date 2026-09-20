@@ -34,14 +34,14 @@ export default function Onboarding() {
             ¡Bienvenido!
           </Text>
           <Text muted center>
-            ¿Qué querés hacer?
+            ¿Qué quieres hacer?
           </Text>
         </View>
 
         <Card level={1} style={{ gap: spacing.sm }}>
           <Text weight="bold">Crear mi tienda</Text>
           <Text muted variant="small">
-            Arrancá tu propio negocio: catálogo, facturación e inventario.
+            Empieza tu propio negocio: catálogo, facturación e inventario.
           </Text>
           <Button
             title="Crear mi tienda"
@@ -59,7 +59,7 @@ export default function Onboarding() {
         <Card level={0} style={{ gap: spacing.sm }}>
           <Text weight="bold">Unirme a una tienda</Text>
           <Text muted variant="small">
-            Si el dueño de una tienda te compartió un código QR, escaneálo acá.
+            Si el dueño de una tienda te compartió un código QR, escanéalo aquí.
           </Text>
           <Button
             title="Unirme con un código QR"

@@ -314,7 +314,7 @@ export default function ModalCar() {
             {Number(overrideFor.descuentoPct || 0) > 0 ? (
               <Text muted>
                 Este producto trae una promo de{" "}
-                {Number(overrideFor.descuentoPct)}% — podés reemplazarla solo
+                {Number(overrideFor.descuentoPct)}% — puedes reemplazarla solo
                 para esta venta.
               </Text>
             ) : null}
