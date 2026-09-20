@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Image, Pressable, View } from "react-native";
+import { useLocalSearchParams } from "expo-router";
 
 import FormLogin from "../src/components/sesion/loginView";
 import FormRegister from "../src/components/sesion/registerView";
@@ -13,7 +14,11 @@ const TABS = [
 
 export default function Login() {
   const { colors, spacing, radii } = useTheme();
-  const [tab, setTab] = useState("login");
+  // La landing manda a /login?tab=register para abrir "Crear cuenta".
+  const params = useLocalSearchParams();
+  const [tab, setTab] = useState(
+    params.tab === "register" ? "register" : "login",
+  );
 
   return (
     <Screen scroll>
