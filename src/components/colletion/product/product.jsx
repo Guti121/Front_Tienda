@@ -8,6 +8,7 @@ import { mediaUrl } from "../../../api/config";
 import { useTheme } from "../../../theme/ThemeProvider";
 import {
   Badge,
+  Button,
   Card,
   EmptyState,
   Icon,
@@ -16,6 +17,7 @@ import {
   TextField,
 } from "../../../ui";
 import { pesosFormat } from "../../icons/functionFormat";
+import LabelPrintSheet from "./labelPrintSheet";
 
 const FALLBACK_IMG =
   "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
@@ -29,6 +31,12 @@ export default function ProductView() {
 
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
+
+  // Selección para imprimir etiquetas. Se guarda el producto entero (no solo
+  // el id) porque puede venir de páginas distintas o de otra búsqueda.
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState({}); // id -> item
+  const [labelSheet, setLabelSheet] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(query.trim()), 400);
@@ -59,21 +67,66 @@ export default function ProductView() {
     [data],
   );
 
+  const selectedCount = Object.keys(selected).length;
+
+  const toggleSelected = (item) =>
+    setSelected((prev) => {
+      const next = { ...prev };
+      if (next[item.id]) delete next[item.id];
+      else next[item.id] = item;
+      return next;
+    });
+
+  const exitSelection = () => {
+    setSelecting(false);
+    setSelected({});
+  };
+
+  const allLoadedSelected =
+    items.length > 0 && items.every((i) => selected[i.id]);
+  const toggleAllLoaded = () =>
+    setSelected(
+      allLoadedSelected ? {} : Object.fromEntries(items.map((i) => [i.id, i])),
+    );
+
+  const labelItems = Object.values(selected).map((i) => ({
+    id: i.id,
+    nombre: i.nombre,
+    valor: i.valor,
+    code: i.codigo_barras,
+    stock: i.unidades_disponibles,
+  }));
+
   const renderItem = ({ item }) => {
+    const isSelected = !!selected[item.id];
     const uri = mediaUrl(item?.imagen_principal) || FALLBACK_IMG;
     const agotado = !item.unidades_disponibles;
     const descuentoPct = Number(item.descuento_porcentaje || 0);
     return (
       <Pressable
         onPress={() =>
-          router.push({
-            pathname: "/products/detailProduct",
-            params: { id: item.id },
-          })
+          selecting
+            ? toggleSelected(item)
+            : router.push({
+                pathname: "/products/detailProduct",
+                params: { id: item.id },
+              })
         }
+        onLongPress={() => {
+          if (selecting) return;
+          setSelecting(true);
+          toggleSelected(item);
+        }}
         style={{ marginBottom: spacing.sm }}
       >
-        <Card level={1}>
+        <Card
+          level={1}
+          style={
+            isSelected
+              ? { borderWidth: 2, borderColor: colors.primary }
+              : undefined
+          }
+        >
           <View style={{ flexDirection: "row", gap: spacing.md }}>
             <Image
               source={{ uri }}
@@ -137,7 +190,15 @@ export default function ProductView() {
                 </Text>
               </View>
             </View>
-            <Icon name="chevron-right" size={20} color={colors.textFaint} />
+            {selecting ? (
+              <Icon
+                name={isSelected ? "checkbox-marked" : "checkbox-blank-outline"}
+                size={24}
+                color={isSelected ? colors.primary : colors.textFaint}
+              />
+            ) : (
+              <Icon name="chevron-right" size={20} color={colors.textFaint} />
+            )}
           </View>
         </Card>
       </Pressable>
@@ -162,6 +223,25 @@ export default function ProductView() {
             left={<Icon name="magnify" size={20} color={colors.textMuted} />}
           />
         </View>
+        <Pressable
+          onPress={() => (selecting ? exitSelection() : setSelecting(true))}
+          accessibilityLabel="Imprimir etiquetas"
+          style={{
+            width: 46,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: selecting ? colors.primary : colors.border,
+            backgroundColor: selecting ? colors.primarySoft : colors.surface,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Icon
+            name="barcode"
+            size={22}
+            color={selecting ? colors.primary : colors.textMuted}
+          />
+        </Pressable>
         <Pressable
           onPress={() => router.push("/modals/modalFilterProductIcon")}
           style={{
@@ -188,6 +268,7 @@ export default function ProductView() {
         <FlatList
           data={items}
           keyExtractor={(item) => String(item.id)}
+          extraData={{ selecting, selected }}
           contentContainerStyle={{
             paddingHorizontal: spacing.lg,
             paddingBottom: spacing.xl,
@@ -215,6 +296,56 @@ export default function ProductView() {
           renderItem={renderItem}
         />
       )}
+
+      {selecting ? (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: spacing.sm,
+            padding: spacing.md,
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
+            backgroundColor: colors.surface,
+          }}
+        >
+          <Pressable onPress={toggleAllLoaded} style={{ flex: 1 }}>
+            <Text weight="medium">
+              {selectedCount === 0
+                ? "Elige productos"
+                : `${selectedCount} seleccionado${selectedCount === 1 ? "" : "s"}`}
+            </Text>
+            <Text variant="caption" color="primary">
+              {allLoadedSelected ? "Quitar todos" : "Seleccionar los cargados"}
+            </Text>
+          </Pressable>
+          <Button
+            title="Cancelar"
+            variant="ghost"
+            fullWidth={false}
+            onPress={exitSelection}
+          />
+          <Button
+            title="Etiquetas"
+            fullWidth={false}
+            disabled={selectedCount === 0}
+            left={
+              <Icon
+                name="printer-outline"
+                size={18}
+                color={colors.textOnBrand}
+              />
+            }
+            onPress={() => setLabelSheet(true)}
+          />
+        </View>
+      ) : null}
+
+      <LabelPrintSheet
+        visible={labelSheet}
+        onClose={() => setLabelSheet(false)}
+        items={labelItems}
+      />
     </View>
   );
 }

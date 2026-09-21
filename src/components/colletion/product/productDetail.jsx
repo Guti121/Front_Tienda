@@ -14,12 +14,6 @@ import {
   listDiscounts,
   updateDiscount,
 } from "../../../api/discounts";
-import {
-  printLabels,
-  DEFAULT_SIZE,
-  MAX_COPIES,
-  SIZE_OPTIONS,
-} from "../../../features/products/barcodeLabels";
 import { mediaUrl } from "../../../api/config";
 import { useTheme } from "../../../theme/ThemeProvider";
 import {
@@ -31,15 +25,14 @@ import {
   Loader,
   Screen,
   Sheet,
-  Stepper,
   Text,
   TextField,
-  Toggle,
   useToast,
 } from "../../../ui";
 import { ModalCalendar } from "../../themeStyles/modalsCalendar";
 import { pesosFormat } from "../../icons/functionFormat";
 import ImageModal from "./imageModal";
+import LabelPrintSheet from "./labelPrintSheet";
 
 const FALLBACK_IMG =
   "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
@@ -81,10 +74,6 @@ export default function DetailProduct({ id }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [labelSheet, setLabelSheet] = useState(false);
-  const [labelSize, setLabelSize] = useState(DEFAULT_SIZE);
-  const [labelCopies, setLabelCopies] = useState(1);
-  const [labelPrice, setLabelPrice] = useState(true);
-  const [printing, setPrinting] = useState(false);
 
   const [promoSheet, setPromoSheet] = useState(false);
   const [editingDiscount, setEditingDiscount] = useState(null); // null = crear
@@ -210,35 +199,6 @@ export default function DetailProduct({ id }) {
       pathname: "/modals/modalUpdateProductDrawer",
       params: { product: JSON.stringify(product), event },
     });
-
-  // Por defecto, una etiqueta por unidad en stock.
-  const openLabelSheet = () => {
-    const stock = Number(product?.unidades_disponibles) || 1;
-    setLabelCopies(Math.min(MAX_COPIES, Math.max(1, stock)));
-    setLabelSheet(true);
-  };
-
-  const onPrintLabels = async () => {
-    setPrinting(true);
-    try {
-      await printLabels(
-        [
-          {
-            nombre: product.nombre,
-            valor: product.valor,
-            code: barcode?.code,
-            copies: labelCopies,
-          },
-        ],
-        { size: labelSize, showPrice: labelPrice },
-      );
-      setLabelSheet(false);
-    } catch (err) {
-      toast.error(err?.message || "No se pudieron generar las etiquetas.");
-    } finally {
-      setPrinting(false);
-    }
-  };
 
   if (isLoading) return <Loader label="Cargando producto…" />;
   if (isError || !product) {
@@ -472,7 +432,7 @@ export default function DetailProduct({ id }) {
             left={
               <Icon name="printer-outline" size={18} color={colors.primary} />
             }
-            onPress={openLabelSheet}
+            onPress={() => setLabelSheet(true)}
           />
         </Card>
 
@@ -619,59 +579,19 @@ export default function DetailProduct({ id }) {
         />
       </Sheet>
 
-      <Sheet
+      <LabelPrintSheet
         visible={labelSheet}
         onClose={() => setLabelSheet(false)}
-        title="Imprimir etiquetas"
-      >
-        <Text muted variant="small">
-          Tamaño del sticker (ancho x alto en mm)
-        </Text>
-        <View
-          style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}
-        >
-          {SIZE_OPTIONS.map((size) => (
-            <Button
-              key={size}
-              title={size}
-              fullWidth={false}
-              variant={labelSize === size ? "primary" : "secondary"}
-              onPress={() => setLabelSize(size)}
-            />
-          ))}
-        </View>
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <Text muted>Copias</Text>
-          <Stepper
-            value={labelCopies}
-            onChange={setLabelCopies}
-            min={1}
-            max={MAX_COPIES}
-          />
-        </View>
-        <Toggle
-          label="Mostrar el precio"
-          value={labelPrice}
-          onValueChange={setLabelPrice}
-        />
-        <Button
-          title="Imprimir"
-          loading={printing}
-          disabled={!barcode?.code}
-          onPress={onPrintLabels}
-        />
-        {!barcode?.code ? (
-          <Text muted variant="small">
-            Este producto aún no tiene código de barras generado.
-          </Text>
-        ) : null}
-      </Sheet>
+        items={[
+          {
+            id: product.id,
+            nombre: product.nombre,
+            valor: product.valor,
+            code: barcode?.code,
+            stock: product.unidades_disponibles,
+          },
+        ]}
+      />
 
       <ImageModal
         visible={!!selectedImage}

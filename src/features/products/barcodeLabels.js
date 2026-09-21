@@ -19,6 +19,8 @@ export const LABEL_SIZES = {
 export const SIZE_OPTIONS = Object.keys(LABEL_SIZES);
 export const DEFAULT_SIZE = "50x30";
 export const MAX_COPIES = 200;
+// Tope de etiquetas por impresión (el HTML crece ~3 KB por etiqueta).
+export const MAX_TOTAL = 1000;
 
 // Barra más angosta: hasta 0,4 mm; en etiquetas angostas se reduce para que
 // quepan los 113 módulos (incluye zonas de silencio). Recomendado >= 0,33 mm.
@@ -71,6 +73,11 @@ export function buildLabelsHtml(
     const copies = clampCopies(item.copies);
     body += one.repeat(copies);
     count += copies;
+  }
+  if (count > MAX_TOTAL) {
+    throw new Error(
+      `Son ${count} etiquetas; el máximo por impresión es ${MAX_TOTAL}.`,
+    );
   }
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Etiquetas</title>
 <style>
