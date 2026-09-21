@@ -15,9 +15,11 @@ import {
   updateDiscount,
 } from "../../../api/discounts";
 import {
-  downloadBarcodePdf,
+  printLabels,
+  DEFAULT_SIZE,
+  MAX_COPIES,
   SIZE_OPTIONS,
-} from "../../../features/products/barcodePdf";
+} from "../../../features/products/barcodeLabels";
 import { mediaUrl } from "../../../api/config";
 import { useTheme } from "../../../theme/ThemeProvider";
 import {
@@ -29,13 +31,14 @@ import {
   Loader,
   Screen,
   Sheet,
+  Stepper,
   Text,
   TextField,
+  Toggle,
   useToast,
 } from "../../../ui";
 import { ModalCalendar } from "../../themeStyles/modalsCalendar";
 import { pesosFormat } from "../../icons/functionFormat";
-import { isWeb } from "../../token/localstorage";
 import ImageModal from "./imageModal";
 
 const FALLBACK_IMG =
@@ -77,7 +80,11 @@ export default function DetailProduct({ id }) {
   const [selectedImage, setSelectedImage] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [pdfSheet, setPdfSheet] = useState(false);
+  const [labelSheet, setLabelSheet] = useState(false);
+  const [labelSize, setLabelSize] = useState(DEFAULT_SIZE);
+  const [labelCopies, setLabelCopies] = useState(1);
+  const [labelPrice, setLabelPrice] = useState(true);
+  const [printing, setPrinting] = useState(false);
 
   const [promoSheet, setPromoSheet] = useState(false);
   const [editingDiscount, setEditingDiscount] = useState(null); // null = crear
@@ -204,12 +211,32 @@ export default function DetailProduct({ id }) {
       params: { product: JSON.stringify(product), event },
     });
 
-  const onPickPdfSize = async (size) => {
-    setPdfSheet(false);
+  // Por defecto, una etiqueta por unidad en stock.
+  const openLabelSheet = () => {
+    const stock = Number(product?.unidades_disponibles) || 1;
+    setLabelCopies(Math.min(MAX_COPIES, Math.max(1, stock)));
+    setLabelSheet(true);
+  };
+
+  const onPrintLabels = async () => {
+    setPrinting(true);
     try {
-      await downloadBarcodePdf({ size, barcodeImageUrl: barcodeUrl, product });
+      await printLabels(
+        [
+          {
+            nombre: product.nombre,
+            valor: product.valor,
+            code: barcode?.code,
+            copies: labelCopies,
+          },
+        ],
+        { size: labelSize, showPrice: labelPrice },
+      );
+      setLabelSheet(false);
     } catch (err) {
-      toast.error(err?.message || "No se pudo generar el PDF");
+      toast.error(err?.message || "No se pudieron generar las etiquetas.");
+    } finally {
+      setPrinting(false);
     }
   };
 
@@ -438,17 +465,15 @@ export default function DetailProduct({ id }) {
             source={{ uri: barcodeUrl }}
             style={{ width: 260, height: 120, resizeMode: "contain" }}
           />
-          {isWeb ? (
-            <Button
-              title="Descargar PDF"
-              variant="ghost"
-              fullWidth={false}
-              left={
-                <Icon name="file-pdf-box" size={18} color={colors.primary} />
-              }
-              onPress={() => setPdfSheet(true)}
-            />
-          ) : null}
+          <Button
+            title="Imprimir etiquetas"
+            variant="ghost"
+            fullWidth={false}
+            left={
+              <Icon name="printer-outline" size={18} color={colors.primary} />
+            }
+            onPress={openLabelSheet}
+          />
         </Card>
 
         <View
@@ -595,18 +620,57 @@ export default function DetailProduct({ id }) {
       </Sheet>
 
       <Sheet
-        visible={pdfSheet}
-        onClose={() => setPdfSheet(false)}
-        title="Tamaño de la etiqueta"
+        visible={labelSheet}
+        onClose={() => setLabelSheet(false)}
+        title="Imprimir etiquetas"
       >
-        {SIZE_OPTIONS.map((size) => (
-          <Button
-            key={size}
-            title={`${size} mm`}
-            variant="secondary"
-            onPress={() => onPickPdfSize(size)}
+        <Text muted variant="small">
+          Tamaño del sticker (ancho x alto en mm)
+        </Text>
+        <View
+          style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}
+        >
+          {SIZE_OPTIONS.map((size) => (
+            <Button
+              key={size}
+              title={size}
+              fullWidth={false}
+              variant={labelSize === size ? "primary" : "secondary"}
+              onPress={() => setLabelSize(size)}
+            />
+          ))}
+        </View>
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Text muted>Copias</Text>
+          <Stepper
+            value={labelCopies}
+            onChange={setLabelCopies}
+            min={1}
+            max={MAX_COPIES}
           />
-        ))}
+        </View>
+        <Toggle
+          label="Mostrar el precio"
+          value={labelPrice}
+          onValueChange={setLabelPrice}
+        />
+        <Button
+          title="Imprimir"
+          loading={printing}
+          disabled={!barcode?.code}
+          onPress={onPrintLabels}
+        />
+        {!barcode?.code ? (
+          <Text muted variant="small">
+            Este producto aún no tiene código de barras generado.
+          </Text>
+        ) : null}
       </Sheet>
 
       <ImageModal
