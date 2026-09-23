@@ -185,6 +185,10 @@ export default function ProductView() {
                     tone={item.unidades_disponibles > 3 ? "success" : "warning"}
                   />
                 )}
+                <Badge
+                  label={item.publicar ? "Público" : "Privado"}
+                  tone={item.publicar ? "success" : "neutral"}
+                />
                 <Text variant="caption" muted>
                   #{item.numero_producto}
                 </Text>
