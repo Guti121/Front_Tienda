@@ -41,9 +41,13 @@ const qs = (obj) => {
 };
 
 // GET /facturas/?date=YYYY-MM-DD  (o ?month=&year=; sin filtro = mes actual)
+// `metodoPago`: clave cerrada opcional (ver src/constants/payments.js) para
+// filtrar por tipo de venta.
 // → { numero_de_facturas, total_cantidad_de_procuctos, total_facturas, facturas }
-export async function listInvoices({ date, month, year } = {}) {
-  const { data } = await api.get(`facturas/${qs({ date, month, year })}`);
+export async function listInvoices({ date, month, year, metodoPago } = {}) {
+  const { data } = await api.get(
+    `facturas/${qs({ date, month, year, metodo_pago: metodoPago })}`,
+  );
   return data;
 }
 

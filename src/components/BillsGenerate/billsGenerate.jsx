@@ -4,31 +4,39 @@ import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 
 import { listInvoices } from "../../api/billing";
-import { paymentMethodLabel } from "../../constants/payments";
+import {
+  PAYMENT_METHOD_OPTIONS,
+  paymentMethodLabel,
+} from "../../constants/payments";
 import { ModalCalendar } from "../themeStyles/modalsCalendar";
 import { useTheme } from "../../theme/ThemeProvider";
 import {
   Badge,
   Card,
+  Divider,
   EmptyState,
   Icon,
   Loader,
+  Sheet,
   Text,
   TextField,
 } from "../../ui";
 import { pesosFormat } from "../icons/functionFormat";
+import { toLocalDateStr } from "../../utils/date";
 
-const today = () => new Date().toISOString().split("T")[0];
+const today = () => toLocalDateStr();
 
 export default function BillsGenerate() {
   const { colors, spacing } = useTheme();
   const [date, setDate] = useState(today());
   const [numero, setNumero] = useState("");
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [metodoPagoFiltro, setMetodoPagoFiltro] = useState(null); // null = todos
+  const [filtroSheet, setFiltroSheet] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["invoices", date],
-    queryFn: () => listInvoices({ date }),
+    queryKey: ["invoices", date, metodoPagoFiltro],
+    queryFn: () => listInvoices({ date, metodoPago: metodoPagoFiltro }),
   });
 
   const facturas = data?.facturas ?? [];
@@ -70,12 +78,48 @@ export default function BillsGenerate() {
             }}
           >
             <Text weight="bold">{date}</Text>
-            <Icon
-              name="calendar-month-outline"
-              size={22}
-              color={colors.primary}
-              onPress={() => setCalendarOpen(true)}
-            />
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: spacing.md,
+              }}
+            >
+              <Pressable
+                onPress={() => setFiltroSheet(true)}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                <Icon
+                  name="filter-variant"
+                  size={18}
+                  color={metodoPagoFiltro ? colors.primary : colors.textMuted}
+                />
+                <Text
+                  variant="small"
+                  color={metodoPagoFiltro ? "primary" : "textMuted"}
+                >
+                  {metodoPagoFiltro
+                    ? paymentMethodLabel(metodoPagoFiltro)
+                    : "Filtrar"}
+                </Text>
+              </Pressable>
+              <Icon
+                name="calendar-month-outline"
+                size={22}
+                color={colors.primary}
+                onPress={() => setCalendarOpen(true)}
+              />
+              <Icon
+                name="calendar-month-outline"
+                size={22}
+                color={colors.primary}
+                onPress={() => setCalendarOpen(true)}
+              />
+            </View>
           </View>
           <View
             style={{
@@ -157,8 +201,7 @@ export default function BillsGenerate() {
                     <View style={{ gap: 2 }}>
                       <Text weight="bold">Factura #{item.id}</Text>
                       <Text variant="small" muted>
-                        {d.toISOString().split("T")[0]} ·{" "}
-                        {d.toTimeString().split(" ")[0]}
+                        {toLocalDateStr(d)} · {d.toTimeString().split(" ")[0]}
                       </Text>
                     </View>
                     <View
@@ -204,6 +247,52 @@ export default function BillsGenerate() {
           if (d) setDate(d);
         }}
       />
+
+      <Sheet
+        visible={filtroSheet}
+        onClose={() => setFiltroSheet(false)}
+        title="Filtrar por tipo de venta"
+      >
+        <Pressable
+          onPress={() => {
+            setMetodoPagoFiltro(null);
+            setFiltroSheet(false);
+          }}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingVertical: spacing.md,
+          }}
+        >
+          <Text>Todos</Text>
+          {metodoPagoFiltro === null ? (
+            <Icon name="check" size={20} color={colors.primary} />
+          ) : null}
+        </Pressable>
+        {PAYMENT_METHOD_OPTIONS.map((o) => (
+          <View key={o.value}>
+            <Divider />
+            <Pressable
+              onPress={() => {
+                setMetodoPagoFiltro(o.value);
+                setFiltroSheet(false);
+              }}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingVertical: spacing.md,
+              }}
+            >
+              <Text>{o.label}</Text>
+              {metodoPagoFiltro === o.value ? (
+                <Icon name="check" size={20} color={colors.primary} />
+              ) : null}
+            </Pressable>
+          </View>
+        ))}
+      </Sheet>
     </View>
   );
 }
