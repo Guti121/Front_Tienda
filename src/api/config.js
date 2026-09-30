@@ -1,13 +1,12 @@
 // URL del backend. Expo inyecta las EXPO_PUBLIC_* en el bundle; el fallback es
 // la URL actual para que nada se rompa si no hay .env.
-export const API_URL =
-  "http://127.0.0.1:8000/" || process.env.EXPO_PUBLIC_API_URL;
+export const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://127.0.0.1:8000/";
 
 // El catálogo público ya NO se renderiza dentro de la app: vive en su propia
 // mini-app web (repo `catalog-web`). La app solo comparte el enlace
 // `<CATALOG_WEB_URL>/<nombre-de-la-tienda>`.
 export const CATALOG_WEB_URL = (
-  process.env.EXPO_PUBLIC_CATALOG_URL || "https://catalogo.mystockapp.site"
+  process.env.EXPO_PUBLIC_CATALOG_URL || "http://localhost:3000/"
 ).replace(/\/+$/, "");
 
 export const catalogUrl = (storeName) =>
