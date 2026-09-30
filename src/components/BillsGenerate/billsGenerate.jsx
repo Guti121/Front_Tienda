@@ -113,12 +113,6 @@ export default function BillsGenerate() {
                 color={colors.primary}
                 onPress={() => setCalendarOpen(true)}
               />
-              <Icon
-                name="calendar-month-outline"
-                size={22}
-                color={colors.primary}
-                onPress={() => setCalendarOpen(true)}
-              />
             </View>
           </View>
           <View
