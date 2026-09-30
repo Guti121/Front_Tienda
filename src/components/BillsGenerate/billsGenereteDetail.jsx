@@ -22,6 +22,7 @@ import {
   useToast,
 } from "../../ui";
 import { pesosFormat } from "../icons/functionFormat";
+import { toLocalDateStr } from "../../utils/date";
 
 function facturaHtml(f, id) {
   const rows = (f.detalles ?? [])
@@ -126,7 +127,7 @@ export function BillGenerateDetail({ id }) {
           </Text>
           {d ? (
             <Text variant="small" muted>
-              {d.toISOString().split("T")[0]} · {d.toTimeString().split(" ")[0]}
+              {toLocalDateStr(d)} · {d.toTimeString().split(" ")[0]}
             </Text>
           ) : null}
         </Card>

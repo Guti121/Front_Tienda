@@ -4,6 +4,7 @@ import { Calendar } from "react-native-calendars";
 
 import { useTheme } from "../../theme/ThemeProvider";
 import { Text } from "../../ui";
+import { toLocalDateStr } from "../../utils/date";
 
 const MESES = [
   "Ene",
@@ -29,7 +30,7 @@ export const ModalCalendar = ({ state, onClose }) => {
   return (
     <Modal visible={state} animationType="fade" transparent>
       <Pressable
-        onPress={() => onClose(new Date().toISOString().split("T")[0])}
+        onPress={() => onClose(toLocalDateStr())}
         style={{
           flex: 1,
           justifyContent: "center",
