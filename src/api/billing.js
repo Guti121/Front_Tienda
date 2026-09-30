@@ -5,9 +5,12 @@ import { api, postForm } from "./http";
 // POST /facturas/create/  → { mensaje, factura_id, Factura }
 // `detalles`: [{ producto: <id>, cantidad: <n>, descuento_porcentaje?: <n> }]
 // `descuentoPorcentaje`: % general opcional sobre el total de la venta.
-export async function createInvoice(detalles, descuentoPorcentaje) {
+// `metodoPago`: clave cerrada (ver src/constants/payments.js); si se omite,
+// el backend usa "efectivo" por defecto.
+export async function createInvoice(detalles, descuentoPorcentaje, metodoPago) {
   const body = { detalles };
   if (descuentoPorcentaje) body.descuento_porcentaje = descuentoPorcentaje;
+  if (metodoPago) body.metodo_pago = metodoPago;
   const { data } = await api.post("facturas/create/", body);
   return data;
 }

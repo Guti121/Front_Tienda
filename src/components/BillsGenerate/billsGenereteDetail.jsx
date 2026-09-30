@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Print from "expo-print";
 
 import { retrieveInvoice, deleteInvoice } from "../../api/billing";
+import { paymentMethodLabel } from "../../constants/payments";
 import { ApiError } from "../../api/http";
 import { isWeb } from "../token/localstorage";
 import { useTheme } from "../../theme/ThemeProvider";
@@ -38,6 +39,7 @@ function facturaHtml(f, id) {
     <h2 style="text-align:center;text-transform:uppercase">${f.tienda_nombre ?? ""}</h2>
     <h3 style="text-align:center">Factura #${id}</h3>
     <p style="text-align:center">Vendedor: ${f.creado_por_full_name ?? ""}</p>
+    <p style="text-align:center">Método de pago: ${paymentMethodLabel(f.metodo_pago)}</p>
     <table border="1" style="width:100%;border-collapse:collapse">
       <thead><tr><th>#</th><th>Producto</th><th>Cantidad</th><th>Valor unitario</th><th>Subtotal</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -118,6 +120,9 @@ export function BillGenerateDetail({ id }) {
           </Text>
           <Text variant="small" muted>
             {data.creado_por_full_name}
+          </Text>
+          <Text variant="small" muted>
+            Método de pago: {paymentMethodLabel(data.metodo_pago)}
           </Text>
           {d ? (
             <Text variant="small" muted>

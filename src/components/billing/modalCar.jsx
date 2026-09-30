@@ -7,6 +7,11 @@ import { useCart } from "../../hooks/useCart";
 import { ApiError } from "../../api/http";
 import { useTheme } from "../../theme/ThemeProvider";
 import {
+  DEFAULT_PAYMENT_METHOD,
+  PAYMENT_METHOD_OPTIONS,
+  paymentMethodLabel,
+} from "../../constants/payments";
+import {
   Badge,
   Button,
   Card,
@@ -40,6 +45,8 @@ export default function ModalCar() {
   const [overrideFor, setOverrideFor] = useState(null); // item del carrito o null
   const [overrideTxt, setOverrideTxt] = useState("");
   const [descuentoGeneralTxt, setDescuentoGeneralTxt] = useState("");
+  const [metodoPago, setMetodoPago] = useState(DEFAULT_PAYMENT_METHOD);
+  const [metodoPagoSheet, setMetodoPagoSheet] = useState(false);
 
   const pctDeLinea = (item) =>
     overrides[item.producto] !== undefined
@@ -104,10 +111,12 @@ export default function ModalCar() {
       const data = await createInvoice(
         detalles,
         descuentoGeneralPct || undefined,
+        metodoPago,
       );
       await clear();
       setOverrides({});
       setDescuentoGeneralTxt("");
+      setMetodoPago(DEFAULT_PAYMENT_METHOD);
       setConfirming(false);
       if (data?.factura_id) {
         router.replace(
@@ -259,6 +268,25 @@ export default function ModalCar() {
             />
           </View>
 
+          <Pressable
+            onPress={() => setMetodoPagoSheet(true)}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginTop: spacing.sm,
+              paddingVertical: spacing.xs,
+            }}
+          >
+            <Text muted>Método de pago</Text>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+            >
+              <Text weight="medium">{paymentMethodLabel(metodoPago)}</Text>
+              <Icon name="chevron-down" size={18} color={colors.textFaint} />
+            </View>
+          </Pressable>
+
           <Divider />
           <View
             style={{
@@ -349,7 +377,8 @@ export default function ModalCar() {
       >
         <Text muted>
           Se generará una factura por {count} producto(s) por un total de{" "}
-          {pesosFormat(totalPreview)}.
+          {pesosFormat(totalPreview)}, pagada con{" "}
+          {paymentMethodLabel(metodoPago)}.
         </Text>
         <Button
           title="Confirmar y facturar"
@@ -361,6 +390,35 @@ export default function ModalCar() {
           variant="secondary"
           onPress={() => setConfirming(false)}
         />
+      </Sheet>
+
+      <Sheet
+        visible={metodoPagoSheet}
+        onClose={() => setMetodoPagoSheet(false)}
+        title="Método de pago"
+      >
+        {PAYMENT_METHOD_OPTIONS.map((o, i) => (
+          <View key={o.value}>
+            {i > 0 ? <Divider /> : null}
+            <Pressable
+              onPress={() => {
+                setMetodoPago(o.value);
+                setMetodoPagoSheet(false);
+              }}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingVertical: spacing.md,
+              }}
+            >
+              <Text>{o.label}</Text>
+              {metodoPago === o.value ? (
+                <Icon name="check" size={20} color={colors.primary} />
+              ) : null}
+            </Pressable>
+          </View>
+        ))}
       </Sheet>
     </Screen>
   );

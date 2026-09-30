@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 
 import { listInvoices } from "../../api/billing";
+import { paymentMethodLabel } from "../../constants/payments";
 import { ModalCalendar } from "../themeStyles/modalsCalendar";
 import { useTheme } from "../../theme/ThemeProvider";
 import {
@@ -171,6 +172,12 @@ export default function BillsGenerate() {
                         <Badge
                           label={`-${Number(item.descuento_porcentaje)}%`}
                           tone="danger"
+                        />
+                      ) : null}
+                      {item.metodo_pago ? (
+                        <Badge
+                          label={paymentMethodLabel(item.metodo_pago)}
+                          tone="neutral"
                         />
                       ) : null}
                       <Text weight="bold" color="primary">
