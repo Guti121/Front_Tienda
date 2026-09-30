@@ -148,7 +148,8 @@ export default function CatalogAppearance() {
   const user = useSelector((state) => state.user.user);
   const isCreator = user?.typeUser === "creator";
 
-  const webInputRef = useRef(null);
+  const bannerInputRef = useRef(null);
+  const logoInputRef = useRef(null);
   const [previewFontsReady] = useFonts({
     Poppins_600SemiBold,
     Nunito_600SemiBold,
@@ -163,6 +164,7 @@ export default function CatalogAppearance() {
 
   const [form, setForm] = useState(EMPTY);
   const [banner, setBanner] = useState(null); // imagen nueva sin subir: { file?, uri }
+  const [logo, setLogo] = useState(null); // ídem, para la foto de perfil
   const [editable, setEditable] = useState(false);
   const [fontSheet, setFontSheet] = useState(false);
   const [colorSlot, setColorSlot] = useState(null); // "accent" | "bg" | "text"
@@ -175,7 +177,7 @@ export default function CatalogAppearance() {
   const textChanged = Object.keys(EMPTY).some(
     (k) => (form[k] ?? "") !== (data?.[k] ?? ""),
   );
-  const dirty = textChanged || Boolean(banner);
+  const dirty = textChanged || Boolean(banner) || Boolean(logo);
 
   const set = (patch) => setForm((p) => ({ ...p, ...patch }));
 
@@ -204,18 +206,20 @@ export default function CatalogAppearance() {
     setColorSlot(slot);
   };
 
-  const pickWeb = (e) => {
+  // Selección de imagen genérica (banner o logo): cada uno guarda su propio
+  // estado y usa su propio <input> oculto en web / recorte en nativo.
+  const pickImageWeb = (e, setter, inputRef) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
       toast.error("La imagen supera los 10MB.");
       return;
     }
-    setBanner({ file, uri: URL.createObjectURL(file) });
-    if (webInputRef.current) webInputRef.current.value = "";
+    setter({ file, uri: URL.createObjectURL(file) });
+    if (inputRef.current) inputRef.current.value = "";
   };
 
-  const pickNative = async () => {
+  const pickImageNative = async (setter, aspect) => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
       toast.error("Necesitas dar permiso a la galería.");
@@ -225,16 +229,21 @@ export default function CatalogAppearance() {
       mediaTypes: ["images"],
       quality: 0.8,
       allowsEditing: true,
-      aspect: [16, 9],
+      aspect,
     });
     if (!res.canceled && res.assets?.[0]?.uri) {
-      setBanner({ uri: res.assets[0].uri });
+      setter({ uri: res.assets[0].uri });
     }
   };
 
   const pickBanner = () => {
-    if (isWeb) webInputRef.current?.click();
-    else pickNative();
+    if (isWeb) bannerInputRef.current?.click();
+    else pickImageNative(setBanner, [16, 9]);
+  };
+
+  const pickLogo = () => {
+    if (isWeb) logoInputRef.current?.click();
+    else pickImageNative(setLogo, [1, 1]);
   };
 
   const save = useMutation({
@@ -252,12 +261,22 @@ export default function CatalogAppearance() {
           type: "image/jpeg",
         });
       }
+      if (logo?.file) {
+        fd.append("url_logo", logo.file);
+      } else if (logo?.uri) {
+        fd.append("url_logo", {
+          uri: logo.uri,
+          name: "logo.jpg",
+          type: "image/jpeg",
+        });
+      }
       return updateCompany(fd);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["company"] });
       setEditable(false);
       setBanner(null);
+      setLogo(null);
       toast.success("Catálogo actualizado");
     },
     onError: (err) =>
@@ -282,6 +301,7 @@ export default function CatalogAppearance() {
   }
 
   const previewUri = banner?.uri || mediaUrl(data?.catalog_banner);
+  const logoPreviewUri = logo?.uri || mediaUrl(data?.url_logo);
   const themeInput = themeInputFrom(form);
   const t = resolveCatalogTheme(themeInput);
   const eff = effectiveColors(themeInput);
@@ -297,26 +317,34 @@ export default function CatalogAppearance() {
   const customColors = COLOR_KEYS.some((k) => form[k]);
 
   return (
-    <Screen scroll>
-      <View style={{ gap: spacing.lg }}>
+    <Screen contentStyle={{ gap: spacing.md }}>
+      {/* Vista previa en vivo — fija arriba: se ve el efecto de cada cambio
+          sin tener que subir el scroll hasta acá. Altura acotada: la grilla
+          de muestra usa aspectRatio 1 a todo el ancho, así que sin límite
+          puede volverse más alta que la pantalla y dejar sin espacio (y sin
+          poder hacer scroll) al resto del formulario. */}
+      <View style={{ gap: spacing.sm, flexShrink: 0 }}>
         <Text variant="body" muted>
           Personaliza cómo se ve tu catálogo público. Los cambios pueden tardar
           unos minutos en verse.
         </Text>
 
-        {/* Vista previa en vivo — réplica del storefront real */}
         <Card level={1} padded={false} style={{ overflow: "hidden" }}>
-          <StorefrontPreview
-            theme={t}
-            fontFamily={previewFamily}
-            storeName={data?.company || "Mi Tienda"}
-            municipality={data?.municipality}
-            tagline={
-              form.catalog_tagline || "Explora el catálogo y pide por WhatsApp."
-            }
-            announcement={form.catalog_announcement}
-            bannerUri={previewUri}
-          />
+          <ScrollView style={{ maxHeight: 320 }}>
+            <StorefrontPreview
+              theme={t}
+              fontFamily={previewFamily}
+              storeName={data?.company || "Mi Tienda"}
+              municipality={data?.municipality}
+              tagline={
+                form.catalog_tagline ||
+                "Explora el catálogo y pide por WhatsApp."
+              }
+              announcement={form.catalog_announcement}
+              bannerUri={previewUri}
+              logoUri={logoPreviewUri}
+            />
+          </ScrollView>
           {lowContrast ? (
             <View
               style={{
@@ -338,13 +366,69 @@ export default function CatalogAppearance() {
             </View>
           ) : null}
         </Card>
+      </View>
 
+      <ScrollView
+        style={{ flex: 1, minHeight: 0 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ gap: spacing.lg, paddingBottom: spacing.xl }}
+      >
         <Button
           title="Ver mi catálogo"
           variant="secondary"
           left={<Icon name="open-in-new" size={18} color={colors.text} />}
           onPress={openCatalog}
         />
+
+        {/* Foto de perfil (logo) */}
+        <Card
+          level={0}
+          style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}
+        >
+          <View
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              overflow: "hidden",
+              backgroundColor: colors.surfaceAlt,
+            }}
+          >
+            {logoPreviewUri ? (
+              <Image
+                source={{ uri: logoPreviewUri }}
+                style={{ width: "100%", height: "100%" }}
+                resizeMode="cover"
+              />
+            ) : null}
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text variant="small" weight="medium" muted>
+              Foto de perfil
+            </Text>
+            <Text variant="caption" style={{ color: colors.textFaint }}>
+              Se ve en la cabecera y la portada del catálogo
+            </Text>
+          </View>
+          {editable ? (
+            <Button
+              title="Cambiar"
+              variant="secondary"
+              fullWidth={false}
+              onPress={pickLogo}
+            />
+          ) : null}
+          {isWeb ? (
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={(e) => pickImageWeb(e, setLogo, logoInputRef)}
+            />
+          ) : null}
+        </Card>
 
         {/* Paleta */}
         <Card level={0} style={{ gap: spacing.sm }}>
@@ -550,11 +634,11 @@ export default function CatalogAppearance() {
           ) : null}
           {isWeb ? (
             <input
-              ref={webInputRef}
+              ref={bannerInputRef}
               type="file"
               accept="image/*"
               style={{ display: "none" }}
-              onChange={pickWeb}
+              onChange={(e) => pickImageWeb(e, setBanner, bannerInputRef)}
             />
           ) : null}
         </Card>
@@ -601,6 +685,7 @@ export default function CatalogAppearance() {
                   onPress={() => {
                     setEditable(false);
                     setBanner(null);
+                    setLogo(null);
                     if (data) setForm(seedFrom(data));
                   }}
                 />
@@ -617,7 +702,7 @@ export default function CatalogAppearance() {
             )}
           </View>
         ) : null}
-      </View>
+      </ScrollView>
 
       {/* Sheet: tipografía con preview de cada estilo */}
       <Sheet

@@ -99,6 +99,7 @@ export default function StorefrontPreview({
   tagline,
   announcement,
   bannerUri,
+  logoUri,
 }) {
   const font = fontFamily;
   const txt = (size, weight, color, extra) => [
@@ -152,8 +153,17 @@ export default function StorefrontPreview({
             borderWidth: 1,
             borderColor: theme.line,
             backgroundColor: "#e2e8f0",
+            overflow: "hidden",
           }}
-        />
+        >
+          {logoUri ? (
+            <Image
+              source={{ uri: logoUri }}
+              style={{ width: "100%", height: "100%" }}
+              resizeMode="cover"
+            />
+          ) : null}
+        </View>
         <Text numberOfLines={1} style={txt(12, "700", theme.ink, { flex: 1 })}>
           {storeName}
         </Text>
@@ -238,8 +248,17 @@ export default function StorefrontPreview({
               flex: 1,
               borderRadius: 999,
               backgroundColor: "#e2e8f0",
+              overflow: "hidden",
             }}
-          />
+          >
+            {logoUri ? (
+              <Image
+                source={{ uri: logoUri }}
+                style={{ width: "100%", height: "100%" }}
+                resizeMode="cover"
+              />
+            ) : null}
+          </View>
         </View>
         <Text
           numberOfLines={1}

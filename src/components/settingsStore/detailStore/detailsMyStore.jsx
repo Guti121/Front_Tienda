@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Image, View } from "react-native";
+import { View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSelector } from "react-redux";
 
@@ -9,10 +9,7 @@ import {
   deleteCompany,
 } from "../../../api/store";
 import { ApiError } from "../../../api/http";
-import { mediaUrl } from "../../../api/config";
 import { deleteTokenStorage } from "../../token/token";
-import ImagePickerWeb from "../../colletion/componentWebimage";
-import { isWeb } from "../../token/localstorage";
 import { useTheme } from "../../../theme/ThemeProvider";
 import {
   Button,
@@ -36,9 +33,6 @@ const FIELDS = [
   ["municipality", "Municipio"],
 ];
 
-const FALLBACK_LOGO =
-  "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
-
 export default function DetailsMyStore() {
   const { colors, spacing } = useTheme();
   const toast = useToast();
@@ -53,7 +47,6 @@ export default function DetailsMyStore() {
 
   const [form, setForm] = useState({});
   const [editable, setEditable] = useState(false);
-  const [images, setImages] = useState([]);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
@@ -65,21 +58,11 @@ export default function DetailsMyStore() {
       const changed = Object.keys(form).filter((k) => form[k] !== data?.[k]);
       const fd = new FormData();
       changed.forEach((k) => fd.append(k, form[k] ?? ""));
-      images.forEach((img) => {
-        if (isWeb && img?.file) fd.append("url_logo", img.file);
-        else if (!isWeb && img?.uri)
-          fd.append("url_logo", {
-            uri: img.uri,
-            name: "logo.jpg",
-            type: "image/jpeg",
-          });
-      });
       return updateCompany(fd);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["company"] });
       setEditable(false);
-      setImages([]);
       toast.success("Datos actualizados");
     },
     onError: (err) =>
@@ -117,16 +100,6 @@ export default function DetailsMyStore() {
   return (
     <Screen scroll>
       <View style={{ gap: spacing.lg }}>
-        <Card level={1} style={{ alignItems: "center", gap: spacing.sm }}>
-          <Image
-            source={{ uri: mediaUrl(form?.url_logo) || FALLBACK_LOGO }}
-            style={{ width: 88, height: 88, borderRadius: 44 }}
-          />
-          {editable ? (
-            <ImagePickerWeb images={images} setImages={setImages} />
-          ) : null}
-        </Card>
-
         <Card level={0} style={{ gap: spacing.md }}>
           {FIELDS.map(([key, label]) => (
             <TextField
