@@ -59,6 +59,14 @@ export default function ModalsLayout() {
           title: "Crear Tipo de Producto",
         }}
       />
+      <Stack.Screen
+        name="modalAddCategoryDrawer"
+        options={{
+          presentation: "modal",
+          animation: "fade",
+          title: "Crear Categoría",
+        }}
+      />
     </Stack>
   );
 }

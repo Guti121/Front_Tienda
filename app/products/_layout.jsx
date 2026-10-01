@@ -11,6 +11,14 @@ export default function ProductsLayout() {
           headerShown: true,
         }} />
 
+      <Stack.Screen name="addCategoryDrawer"
+        options={{
+          presentation: "card",
+          animation: "default",
+          title: "Crear Categoría",
+          headerShown: true,
+        }} />
+
       <Stack.Screen
         name="detailProduct"
         options={{

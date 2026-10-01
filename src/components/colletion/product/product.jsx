@@ -4,15 +4,18 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useInfiniteQuery } from "@tanstack/react-query";
 
 import { listProductsAdmin } from "../../../api/products";
+import { listCategories } from "../../../api/categories";
 import { mediaUrl } from "../../../api/config";
 import { useTheme } from "../../../theme/ThemeProvider";
 import {
   Badge,
   Button,
   Card,
+  Divider,
   EmptyState,
   Icon,
   Loader,
+  Sheet,
   Text,
   TextField,
 } from "../../../ui";
@@ -21,6 +24,74 @@ import LabelPrintSheet from "./labelPrintSheet";
 
 const FALLBACK_IMG =
   "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
+
+// Sheet de filtro por categoría: "Todas" + cada categoría, con checkmark en la
+// activa (mismo patrón que el filtro de método de pago en billsGenerate.jsx).
+function CategoryFilterSheet({ visible, onClose, value, onSelect }) {
+  const { colors, spacing } = useTheme();
+  const { data, isLoading, fetchNextPage, hasNextPage } = useInfiniteQuery({
+    queryKey: ["categories"],
+    queryFn: ({ pageParam }) => listCategories(pageParam),
+    initialPageParam: "listCategory/",
+    getNextPageParam: (last) => last?.next ?? undefined,
+    enabled: visible,
+  });
+
+  const items = (data?.pages ?? []).flatMap((p) => p?.results ?? []);
+
+  return (
+    <Sheet visible={visible} onClose={onClose} title="Filtrar por categoría">
+      <Pressable
+        onPress={() => {
+          onSelect(null);
+          onClose();
+        }}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingVertical: spacing.md,
+        }}
+      >
+        <Text>Todas</Text>
+        {value === null ? (
+          <Icon name="check" size={20} color={colors.primary} />
+        ) : null}
+      </Pressable>
+      {isLoading ? (
+        <Loader fill={false} />
+      ) : (
+        items.map((item) => (
+          <View key={item.id}>
+            <Divider />
+            <Pressable
+              onPress={() => {
+                onSelect(item.id);
+                onClose();
+              }}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingVertical: spacing.md,
+              }}
+              onLayout={
+                item.id === items[items.length - 1]?.id
+                  ? () => hasNextPage && fetchNextPage()
+                  : undefined
+              }
+            >
+              <Text>{item.nombre}</Text>
+              {value === item.id ? (
+                <Icon name="check" size={20} color={colors.primary} />
+              ) : null}
+            </Pressable>
+          </View>
+        ))
+      )}
+    </Sheet>
+  );
+}
 
 // Listado de productos (vista admin). Paginado incremental con React Query.
 export default function ProductView() {
@@ -31,6 +102,8 @@ export default function ProductView() {
 
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
+  const [categoriaFiltro, setCategoriaFiltro] = useState(null); // id o null (todas)
+  const [categoriaSheet, setCategoriaSheet] = useState(false);
 
   // Selección para imprimir etiquetas. Se guarda el producto entero (no solo
   // el id) porque puede venir de páginas distintas o de otra búsqueda.
@@ -51,9 +124,14 @@ export default function ProductView() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ["products", "admin", debounced, order],
+    queryKey: ["products", "admin", debounced, order, categoriaFiltro],
     queryFn: ({ pageParam }) =>
-      listProductsAdmin({ q: debounced, order, page: pageParam }),
+      listProductsAdmin({
+        q: debounced,
+        order,
+        page: pageParam,
+        categoria: categoriaFiltro ?? undefined,
+      }),
     initialPageParam: 1,
     getNextPageParam: (lastPage, pages) =>
       lastPage?.next ? pages.length + 1 : undefined,
@@ -264,6 +342,26 @@ export default function ProductView() {
             color={order ? colors.primary : colors.textMuted}
           />
         </Pressable>
+        <Pressable
+          onPress={() => setCategoriaSheet(true)}
+          style={{
+            width: 46,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: categoriaFiltro ? colors.primary : colors.border,
+            backgroundColor: categoriaFiltro
+              ? colors.primarySoft
+              : colors.surface,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Icon
+            name="filter-variant"
+            size={20}
+            color={categoriaFiltro ? colors.primary : colors.textMuted}
+          />
+        </Pressable>
       </View>
 
       {isLoading ? (
@@ -349,6 +447,13 @@ export default function ProductView() {
         visible={labelSheet}
         onClose={() => setLabelSheet(false)}
         items={labelItems}
+      />
+
+      <CategoryFilterSheet
+        visible={categoriaSheet}
+        onClose={() => setCategoriaSheet(false)}
+        value={categoriaFiltro}
+        onSelect={setCategoriaFiltro}
       />
     </View>
   );

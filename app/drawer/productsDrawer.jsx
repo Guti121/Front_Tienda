@@ -3,6 +3,7 @@ import { Pressable, View } from "react-native";
 
 import ProductView from "../../src/components/colletion/product/product";
 import TypeProductView from "../../src/components/colletion/typeProduct/typeProduct";
+import CategoryView from "../../src/components/colletion/category/category";
 import { useUserCAAuthRedirect } from "../../src/redux/viewsPermissions";
 import { useTheme } from "../../src/theme/ThemeProvider";
 import { Text } from "../../src/ui";
@@ -10,7 +11,14 @@ import { Text } from "../../src/ui";
 const TABS = [
   ["product", "Productos"],
   ["type", "Tipos"],
+  ["category", "Categorías"],
 ];
+
+const VIEWS = {
+  product: ProductView,
+  type: TypeProductView,
+  category: CategoryView,
+};
 
 // Cambia entre el listado de productos y el de tipos de producto.
 export default function ProductsDrawer() {
@@ -46,8 +54,10 @@ export default function ProductsDrawer() {
               }}
             >
               <Text
+                variant="small"
                 weight={active ? "bold" : "regular"}
                 color={active ? "text" : "textMuted"}
+                numberOfLines={1}
               >
                 {label}
               </Text>
@@ -57,7 +67,10 @@ export default function ProductsDrawer() {
       </View>
 
       <View style={{ flex: 1 }}>
-        {tab === "product" ? <ProductView /> : <TypeProductView />}
+        {(() => {
+          const ActiveView = VIEWS[tab];
+          return <ActiveView />;
+        })()}
       </View>
     </View>
   );

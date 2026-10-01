@@ -11,15 +11,15 @@ const qs = (obj) => {
   return s ? `?${s}` : "";
 };
 
-// GET /product/  (admin, paginado). order: "" | "0".."5"
-export async function listProductsAdmin({ q = "", order = "", page = 1 } = {}) {
-  const { data } = await api.get(`product/${qs({ q, order, page })}`);
+// GET /product/  (admin, paginado). order: "" | "0".."5". `categoria`: id opcional.
+export async function listProductsAdmin({ q = "", order = "", page = 1, categoria } = {}) {
+  const { data } = await api.get(`product/${qs({ q, order, page, categoria })}`);
   return data; // { results, count, next, previous } o array
 }
 
-// GET /listfilter/?q=  (worker: solo disponibles, tope 10)
-export async function searchAvailableProducts(q) {
-  const { data } = await api.get(`listfilter/${qs({ q })}`);
+// GET /listfilter/?q=&categoria=  (worker: solo disponibles, tope 10)
+export async function searchAvailableProducts(q, categoria) {
+  const { data } = await api.get(`listfilter/${qs({ q, categoria })}`);
   return data;
 }
 
@@ -82,9 +82,11 @@ export async function filterTypeProducts({ q = "", page = 1 } = {}) {
   }
 }
 
-// POST /createtype/  { tipo_producto }
-export async function createTypeProduct(tipo_producto) {
-  const { data } = await api.post("createtype/", { tipo_producto });
+// POST /createtype/  { tipo_producto, categoria? }
+export async function createTypeProduct(tipo_producto, categoria = null) {
+  const body = { tipo_producto };
+  if (categoria != null) body.categoria = categoria;
+  const { data } = await api.post("createtype/", body);
   return data;
 }
 

@@ -80,6 +80,7 @@ function TypeProductPicker({ visible, onClose, onSelect }) {
             renderItem={({ item }) => (
               <ListItem
                 title={item.tipo_producto}
+                subtitle={item.categoria_nombre}
                 onPress={() => onSelect(item)}
               />
             )}

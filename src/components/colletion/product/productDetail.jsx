@@ -317,7 +317,14 @@ export default function DetailProduct({ id }) {
             </>
           ) : null}
           <Divider />
-          <Row label="Tipo" value={product.tipo_producto || "—"} />
+          <Row
+            label="Tipo"
+            value={
+              product.tipo_producto
+                ? `${product.categoria ? `${product.categoria} › ` : ""}${product.tipo_producto}`
+                : "—"
+            }
+          />
           <Row
             label="Unidades disponibles"
             value={String(product.unidades_disponibles)}

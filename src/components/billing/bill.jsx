@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { FlatList, Image, Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import { searchAvailableProducts } from "../../api/products";
+import { listCategories } from "../../api/categories";
 import { mediaUrl } from "../../api/config";
 import { addToCart, useCart } from "../../hooks/useCart";
 import { useTheme } from "../../theme/ThemeProvider";
@@ -11,6 +12,7 @@ import {
   Badge,
   Button,
   Card,
+  Divider,
   EmptyState,
   Icon,
   Loader,
@@ -26,6 +28,74 @@ import { pesosFormat } from "../icons/functionFormat";
 const FALLBACK_IMG =
   "https://media-stockapp03042025.s3.us-east-2.amazonaws.com/productos/logo-muestra.png";
 
+// Sheet de filtro por categoría: "Todas" + cada categoría, con checkmark en la
+// activa (mismo patrón que el filtro de método de pago en billsGenerate.jsx).
+function CategoryFilterSheet({ visible, onClose, value, onSelect }) {
+  const { colors, spacing } = useTheme();
+  const { data, isLoading, fetchNextPage, hasNextPage } = useInfiniteQuery({
+    queryKey: ["categories"],
+    queryFn: ({ pageParam }) => listCategories(pageParam),
+    initialPageParam: "listCategory/",
+    getNextPageParam: (last) => last?.next ?? undefined,
+    enabled: visible,
+  });
+
+  const items = (data?.pages ?? []).flatMap((p) => p?.results ?? []);
+
+  return (
+    <Sheet visible={visible} onClose={onClose} title="Filtrar por categoría">
+      <Pressable
+        onPress={() => {
+          onSelect(null);
+          onClose();
+        }}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingVertical: spacing.md,
+        }}
+      >
+        <Text>Todas</Text>
+        {value === null ? (
+          <Icon name="check" size={20} color={colors.primary} />
+        ) : null}
+      </Pressable>
+      {isLoading ? (
+        <Loader fill={false} />
+      ) : (
+        items.map((item) => (
+          <View key={item.id}>
+            <Divider />
+            <Pressable
+              onPress={() => {
+                onSelect(item.id);
+                onClose();
+              }}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingVertical: spacing.md,
+              }}
+              onLayout={
+                item.id === items[items.length - 1]?.id
+                  ? () => hasNextPage && fetchNextPage()
+                  : undefined
+              }
+            >
+              <Text>{item.nombre}</Text>
+              {value === item.id ? (
+                <Icon name="check" size={20} color={colors.primary} />
+              ) : null}
+            </Pressable>
+          </View>
+        ))
+      )}
+    </Sheet>
+  );
+}
+
 export default function Bill() {
   const router = useRouter();
   const toast = useToast();
@@ -36,6 +106,8 @@ export default function Bill() {
   const [debounced, setDebounced] = useState("");
   const [selected, setSelected] = useState(null); // producto para el Sheet
   const [qty, setQty] = useState(1);
+  const [categoriaFiltro, setCategoriaFiltro] = useState(null); // id o null
+  const [categoriaSheet, setCategoriaSheet] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(query.trim()), 400);
@@ -43,9 +115,10 @@ export default function Bill() {
   }, [query]);
 
   const { data, isFetching, isError } = useQuery({
-    queryKey: ["products", "available", debounced],
-    queryFn: () => searchAvailableProducts(debounced),
-    enabled: debounced.length > 0,
+    queryKey: ["products", "available", debounced, categoriaFiltro],
+    queryFn: () => searchAvailableProducts(debounced, categoriaFiltro),
+    // Buscar por categoría no requiere texto: alcanza con elegir una.
+    enabled: debounced.length > 0 || categoriaFiltro != null,
   });
 
   const products = useMemo(
@@ -135,21 +208,50 @@ export default function Bill() {
 
   return (
     <Screen padded={false}>
-      <View style={{ padding: spacing.lg, paddingBottom: spacing.sm }}>
-        <TextField
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Buscar producto"
-          left={<Icon name="magnify" size={20} color={colors.textMuted} />}
-          right={
-            <Icon
-              name="barcode-scan"
-              size={22}
-              color={colors.primary}
-              onPress={() => router.push("/modals/modalBarCode")}
-            />
-          }
-        />
+      <View
+        style={{
+          flexDirection: "row",
+          gap: spacing.sm,
+          padding: spacing.lg,
+          paddingBottom: spacing.sm,
+        }}
+      >
+        <View style={{ flex: 1 }}>
+          <TextField
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Buscar producto"
+            left={<Icon name="magnify" size={20} color={colors.textMuted} />}
+            right={
+              <Icon
+                name="barcode-scan"
+                size={22}
+                color={colors.primary}
+                onPress={() => router.push("/modals/modalBarCode")}
+              />
+            }
+          />
+        </View>
+        <Pressable
+          onPress={() => setCategoriaSheet(true)}
+          style={{
+            width: 46,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: categoriaFiltro ? colors.primary : colors.border,
+            backgroundColor: categoriaFiltro
+              ? colors.primarySoft
+              : colors.surface,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Icon
+            name="filter-variant"
+            size={20}
+            color={categoriaFiltro ? colors.primary : colors.textMuted}
+          />
+        </Pressable>
       </View>
 
       {isFetching && products.length === 0 ? <Loader fill={false} /> : null}
@@ -172,16 +274,16 @@ export default function Bill() {
                 title={
                   isError
                     ? "No se pudo buscar"
-                    : debounced
+                    : debounced || categoriaFiltro != null
                       ? "Sin resultados"
                       : "Busca un producto"
                 }
                 message={
                   isError
                     ? "Revisa tu conexión e inténtalo de nuevo."
-                    : debounced
-                      ? "Prueba con otro nombre o número."
-                      : "Escribe el nombre o escanea el código de barras."
+                    : debounced || categoriaFiltro != null
+                      ? "Prueba con otro nombre, número o categoría."
+                      : "Escribe el nombre, escanea el código de barras o filtra por categoría."
                 }
               />
             </View>
@@ -293,6 +395,13 @@ export default function Bill() {
           </>
         ) : null}
       </Sheet>
+
+      <CategoryFilterSheet
+        visible={categoriaSheet}
+        onClose={() => setCategoriaSheet(false)}
+        value={categoriaFiltro}
+        onSelect={setCategoriaFiltro}
+      />
     </Screen>
   );
 }
