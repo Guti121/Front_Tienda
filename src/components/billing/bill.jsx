@@ -5,6 +5,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import { searchAvailableProducts } from "../../api/products";
 import { listCategories } from "../../api/categories";
+import { getCajaActual } from "../../api/caja";
 import { mediaUrl } from "../../api/config";
 import { addToCart, useCart } from "../../hooks/useCart";
 import { useTheme } from "../../theme/ThemeProvider";
@@ -121,6 +122,13 @@ export default function Bill() {
     enabled: debounced.length > 0 || categoriaFiltro != null,
   });
 
+  // Aviso (no bloqueante): el bloqueo real lo hace el backend al confirmar en
+  // modalCar.jsx (400 "No hay una caja abierta", ya mostrado vía toast).
+  const { data: cajaActual } = useQuery({
+    queryKey: ["caja", "actual"],
+    queryFn: getCajaActual,
+  });
+
   const products = useMemo(
     () => (Array.isArray(data) ? data : (data?.results ?? [])),
     [data],
@@ -208,6 +216,28 @@ export default function Bill() {
 
   return (
     <Screen padded={false}>
+      {cajaActual === null ? (
+        <Pressable
+          onPress={() => router.push("/drawer/cajaDrawer")}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: spacing.sm,
+            marginHorizontal: spacing.lg,
+            marginTop: spacing.lg,
+            padding: spacing.md,
+            borderRadius: radii.md,
+            backgroundColor: colors.warningSoft,
+          }}
+        >
+          <Icon name="alert-outline" size={18} color={colors.warning} />
+          <Text variant="small" style={{ color: colors.warning, flex: 1 }}>
+            No hay una caja abierta — tocá para abrirla antes de facturar.
+          </Text>
+          <Icon name="chevron-right" size={18} color={colors.warning} />
+        </Pressable>
+      ) : null}
+
       <View
         style={{
           flexDirection: "row",

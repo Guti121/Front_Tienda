@@ -50,6 +50,11 @@ export const NAV = {
     icon: "file-document-outline",
     roles: ["creator", "admin"],
   },
+  cajaDrawer: {
+    title: "Caja",
+    icon: "cash-multiple",
+    roles: ["creator", "admin", "worker"],
+  },
   stocktaking: {
     title: "Inventario",
     icon: "clipboard-list-outline",
