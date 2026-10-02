@@ -68,11 +68,11 @@ export async function listTypeProducts(pageUrl = "listType/") {
   return data; // { results, next, ... }
 }
 
-// GET /typeProductFilter/?q=&page=  (admin, paginado). Devuelve 404 si no hay
-// coincidencias -> se normaliza a lista vacía.
-export async function filterTypeProducts({ q = "", page = 1 } = {}) {
+// GET /typeProductFilter/?q=&page=&categoria=  (admin, paginado). Devuelve
+// 404 si no hay coincidencias -> se normaliza a lista vacía.
+export async function filterTypeProducts({ q = "", page = 1, categoria } = {}) {
   try {
-    const { data } = await api.get(`typeProductFilter/${qs({ q, page })}`);
+    const { data } = await api.get(`typeProductFilter/${qs({ q, page, categoria })}`);
     return data;
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
